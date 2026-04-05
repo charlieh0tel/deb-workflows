@@ -1,0 +1,66 @@
+name: Build Debian Package (dpkg)
+
+on:
+  workflow_call:
+    inputs:
+      extra-build-deps:
+        description: "Extra build dependencies for jtdor/build-deb-action"
+        required: false
+        type: string
+        default: "devscripts git"
+      before-build-hook:
+        description: "Command to run before building"
+        required: false
+        type: string
+        default: ""
+      os:
+        description: "Runner OS"
+        required: false
+        type: string
+        default: "ubuntu-latest"
+      artifact-name:
+        description: "Name for the uploaded artifact"
+        required: false
+        type: string
+        default: "debian-package"
+
+jobs:
+  build-deb:
+    runs-on: ${{ inputs.os }}
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Build Package
+      uses: jtdor/build-deb-action@v1
+      with:
+        before-build-hook: ${{ inputs.before-build-hook }}
+        extra-build-deps: ${{ inputs.extra-build-deps }}
+
+    - name: Upload Debian package
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: debian/artifacts/*.deb
+        retention-days: 30
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build-deb
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Download all artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: artifacts/**/*.deb
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
