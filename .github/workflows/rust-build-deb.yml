@@ -8,16 +8,11 @@ on:
         required: false
         type: string
         default: ""
-      build-deps-arm64:
-        description: "Space-separated list of additional arm64 build dependencies (e.g. 'libdbus-1-dev:arm64')"
-        required: false
-        type: string
-        default: ""
       targets:
         description: "JSON array of targets to build"
         required: false
         type: string
-        default: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-latest","arch":"amd64","linker":"gcc"},{"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"arm64","linker":"aarch64-linux-gnu-gcc"}]'
+        default: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-latest","arch":"amd64"},{"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04-arm","arch":"arm64"}]'
       run-tests:
         description: "Run tests on amd64"
         required: false
@@ -64,26 +59,9 @@ jobs:
     - name: Install build dependencies
       env:
         BUILD_DEPS: ${{ inputs.build-deps }}
-        BUILD_DEPS_ARM64: ${{ inputs.build-deps-arm64 }}
-        ARCH: ${{ matrix.arch }}
       run: |
         sudo apt-get update
         sudo apt-get install -y pkg-config ${BUILD_DEPS}
-        if [ "${ARCH}" = "arm64" ]; then
-          sudo dpkg --add-architecture arm64
-          sudo rm -f /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources
-          CODENAME=$(lsb_release -cs)
-          sudo tee /etc/apt/sources.list << EOF
-        deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${CODENAME} main restricted universe multiverse
-        deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${CODENAME}-updates main restricted universe multiverse
-        deb [arch=amd64] http://archive.ubuntu.com/ubuntu ${CODENAME}-security main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${CODENAME} main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${CODENAME}-updates main restricted universe multiverse
-        deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports ${CODENAME}-security main restricted universe multiverse
-        EOF
-          sudo apt-get update
-          sudo apt-get install -y gcc-aarch64-linux-gnu ${BUILD_DEPS_ARM64}
-        fi
 
     - name: Install cargo-deb
       run: cargo install cargo-deb
@@ -91,10 +69,6 @@ jobs:
     - name: Build release binary
       env:
         TARGET: ${{ matrix.target }}
-        LINKER: ${{ matrix.linker }}
-        CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: ${{ matrix.linker }}
-        PKG_CONFIG_SYSROOT_DIR: ${{ matrix.arch == 'arm64' && '/usr/aarch64-linux-gnu' || '' }}
-        PKG_CONFIG_PATH: ${{ matrix.arch == 'arm64' && '/usr/lib/aarch64-linux-gnu/pkgconfig' || '' }}
       run: cargo build --release --target "${TARGET}" --verbose
 
     - name: Run tests
