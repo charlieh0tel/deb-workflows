@@ -1,6 +1,8 @@
 # deb-workflows
 
-Reusable GitHub Actions workflows for building Rust projects. Supports native builds on amd64 and arm64 (via GitHub's `ubuntu-22.04-arm` runners for Debian bookworm glibc compatibility) and Windows.
+Reusable GitHub Actions workflows for building projects. 
+
+Supports native Rust builds on amd64 and arm64 (via GitHub's `ubuntu-22.04-arm` runners for Debian bookworm glibc compatibility) and Windows.
 
 ## Available Workflows
 
