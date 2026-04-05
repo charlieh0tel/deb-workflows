@@ -73,7 +73,10 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         mkdir -p staging
-        find target/${{ matrix.target }}/release -maxdepth 1 -type f -executable ! -name '*.d' ! -name '*.so' -exec cp {} staging/ \;
+        for f in $(find target/${{ matrix.target }}/release -maxdepth 1 -type f -executable ! -name '*.d' ! -name '*.so'); do
+          name=$(basename "$f")
+          cp "$f" "staging/${name}-${{ matrix.target }}"
+        done
 
     - name: Upload artifacts (Linux)
       if: runner.os == 'Linux'
@@ -83,12 +86,21 @@ jobs:
         path: staging/*
         retention-days: 30
 
+    - name: Collect binaries (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        New-Item -ItemType Directory -Force -Path staging
+        Get-ChildItem "target/${{ matrix.target }}/release/*.exe" | ForEach-Object {
+          Copy-Item $_.FullName "staging/$($_.BaseName)-${{ matrix.target }}.exe"
+        }
+
     - name: Upload artifacts (Windows)
       if: runner.os == 'Windows'
       uses: actions/upload-artifact@v4
       with:
         name: binaries-${{ matrix.target }}
-        path: target/${{ matrix.target }}/release/*.exe
+        path: staging/*
         retention-days: 30
 
   release:
