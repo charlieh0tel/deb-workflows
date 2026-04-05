@@ -1,70 +1,92 @@
 # deb-workflows
 
-Reusable GitHub Actions workflows for building projects. 
-
-Supports native Rust builds on amd64 and arm64 (via GitHub's `ubuntu-22.04-arm` runners for Debian bookworm glibc compatibility) and Windows.
+Reusable GitHub Actions workflows for building and testing projects.
 
 ## Available Workflows
 
-### `rust-build-deb.yml`
+### Rust
+
+#### `rust-build-deb.yml`
 
 Builds `.deb` packages using `cargo-deb`. Creates a GitHub Release with `.deb` artifacts when a `v*` tag is pushed.
 
-**Requirements:** The calling repo must have a `[package.metadata.deb]` section in `Cargo.toml`. See [cargo-deb documentation](https://github.com/kornelski/cargo-deb#readme).
+**Requirements:** `[package.metadata.deb]` section in `Cargo.toml`. See [cargo-deb docs](https://github.com/kornelski/cargo-deb#readme).
 
-**Default targets:** amd64 (`ubuntu-latest`) and arm64 (`ubuntu-22.04-arm`).
-
-**Inputs:**
+**Default targets:** amd64 (`ubuntu-latest`) and arm64 (`ubuntu-22.04-arm`, for Debian bookworm glibc compat).
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `build-deps` | string | `""` | Space-separated apt packages to install (e.g. `"libdbus-1-dev"`) |
-| `targets` | string | (see below) | JSON array of build targets |
+| `build-deps` | string | `""` | Space-separated apt packages to install |
+| `targets` | string | amd64+arm64 | JSON array of build targets |
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 |
 
-**Default targets JSON:**
-```json
-[
-  {"target": "x86_64-unknown-linux-gnu", "os": "ubuntu-latest", "arch": "amd64"},
-  {"target": "aarch64-unknown-linux-gnu", "os": "ubuntu-22.04-arm", "arch": "arm64"}
-]
-```
+#### `rust-build-exes.yml`
 
-### `rust-build-exes.yml`
+Builds release binaries for Linux and Windows. Creates a GitHub Release with binary artifacts when a `v*` tag is pushed.
 
-Builds release binaries for Linux and Windows. Creates a GitHub Release with binary artifacts when a `v*` tag is pushed. No `.deb` packaging.
-
-**Default targets:** amd64 Linux (`ubuntu-latest`), arm64 Linux (`ubuntu-22.04-arm`), and x86_64 Windows (`windows-latest`).
-
-**Inputs:**
+**Default targets:** amd64 Linux, arm64 Linux, x86_64 Windows.
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `build-deps` | string | `""` | Space-separated apt packages to install on Linux |
-| `targets` | string | (see below) | JSON array of build targets |
+| `targets` | string | amd64+arm64+win | JSON array of build targets |
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 Linux |
 
-**Default targets JSON:**
-```json
-[
-  {"target": "x86_64-unknown-linux-gnu", "os": "ubuntu-latest", "arch": "amd64"},
-  {"target": "aarch64-unknown-linux-gnu", "os": "ubuntu-22.04-arm", "arch": "arm64"},
-  {"target": "x86_64-pc-windows-msvc", "os": "windows-latest", "arch": "amd64"}
-]
-```
+#### `rust-ci.yml`
+
+Runs `cargo fmt` (nightly), `cargo clippy`, and `cargo test` as separate parallel jobs.
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `toolchain` | string | `"stable"` | Rust toolchain for clippy/test |
+| `fmt-toolchain` | string | `"nightly"` | Toolchain for cargo fmt |
+| `targets` | string | `""` | Extra targets to install (e.g. `thumbv6m-none-eabi`) |
+| `build-deps` | string | `""` | Space-separated apt packages to install |
+| `check-args` | string | `""` | Extra args for cargo check/clippy (e.g. `--target thumbv6m-none-eabi`) |
+
+### Python
+
+#### `python-ci.yml`
+
+Runs lint, format check, and tests for Python projects. Each job is independent and can be disabled by passing an empty string for its command.
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `python-version` | string | `"3.12"` | Python version |
+| `requirements-file` | string | `"requirements.txt"` | Path to requirements file (empty to skip) |
+| `test-command` | string | `"pytest --showlocals -rA"` | Test command (empty to skip tests) |
+| `lint-command` | string | `"ruff check ."` | Lint command (empty to skip lint) |
+| `format-check-command` | string | `"ruff format --check ."` | Format check command (empty to skip) |
+
+### Go
+
+#### `go-ci.yml`
+
+Runs `go build`, `go test`, and `go vet`.
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `go-version` | string | `"stable"` | Go version |
 
 ## How to Adopt
 
 ### Step 1: Choose a workflow
 
-- Use `rust-build-deb.yml` if you want `.deb` packages (requires `[package.metadata.deb]` in `Cargo.toml`).
-- Use `rust-build-exes.yml` if you just want release binaries.
+| Goal | Workflow |
+|------|---------|
+| Rust `.deb` packages | `rust-build-deb.yml` |
+| Rust release binaries (Linux + Windows) | `rust-build-exes.yml` |
+| Rust CI (fmt, clippy, test) | `rust-ci.yml` |
+| Python CI (lint, format, test) | `python-ci.yml` |
+| Go CI (build, test, vet) | `go-ci.yml` |
+
+You can combine multiple workflows in a single repo (e.g. `rust-ci.yml` + `rust-build-deb.yml`).
 
 ### Step 2: Create the caller workflow
 
-Create `.github/workflows/build.yml` (or similar) in your repo:
+Create `.github/workflows/ci.yml` (or `build.yml`, etc.) in your repo.
 
-#### Minimal example (deb, no native deps):
+#### Rust deb build (minimal):
 ```yaml
 name: Build Debian Package
 
@@ -84,7 +106,7 @@ jobs:
     secrets: inherit
 ```
 
-#### With build dependencies:
+#### Rust deb build with native deps:
 ```yaml
 jobs:
   build-deb:
@@ -94,12 +116,76 @@ jobs:
     secrets: inherit
 ```
 
-#### Binary releases (no deb):
+#### Rust binary releases (no deb):
 ```yaml
 jobs:
   build-release:
     uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-exes.yml@main
     secrets: inherit
+```
+
+#### Rust CI only:
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-ci.yml@main
+```
+
+#### Rust CI for embedded (custom target):
+```yaml
+jobs:
+  ci:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-ci.yml@main
+    with:
+      targets: "thumbv6m-none-eabi"
+      check-args: "--target thumbv6m-none-eabi"
+```
+
+#### Python CI:
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@main
+```
+
+#### Python CI (lint only, no tests):
+```yaml
+jobs:
+  ci:
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@main
+    with:
+      test-command: ""
+```
+
+#### Go CI:
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  ci:
+    uses: charlieh0tel/deb-workflows/.github/workflows/go-ci.yml@main
 ```
 
 #### amd64-only deb (e.g. for an x86 server):
@@ -112,15 +198,17 @@ jobs:
     secrets: inherit
 ```
 
-### Step 3: Required caller workflow fields
+### Step 3: Required fields for build/release workflows
 
-Every caller workflow **must** include:
-- `permissions: contents: write` at the top level (needed for the release job to create GitHub Releases).
-- `secrets: inherit` on the job (passes `GITHUB_TOKEN` to the reusable workflow).
+Caller workflows that create releases **must** include:
+- `permissions: contents: write` at the top level.
+- `secrets: inherit` on the job.
+
+CI-only workflows (`rust-ci`, `python-ci`, `go-ci`) do not need these.
 
 ### Step 4: For deb builds, add cargo-deb metadata
 
-Add a `[package.metadata.deb]` section to your `Cargo.toml`:
+Add a `[package.metadata.deb]` section to `Cargo.toml`:
 
 ```toml
 [package.metadata.deb]
@@ -146,9 +234,7 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The workflow will build for all targets and create a GitHub Release with the artifacts.
-
-## Target matrix format
+## Target matrix format (Rust build workflows)
 
 Each entry in the `targets` JSON array must have:
 
@@ -160,10 +246,9 @@ Each entry in the `targets` JSON array must have:
 
 ## Notes
 
-- arm64 Linux builds use `ubuntu-22.04-arm` (native arm64 runner) for Debian bookworm glibc compatibility (glibc 2.35).
+- arm64 Linux builds use `ubuntu-22.04-arm` (native runner) for Debian bookworm glibc compatibility (glibc 2.35).
 - amd64 Linux builds use `ubuntu-latest`.
-- Cargo registry, git index, and build artifacts are cached.
-- Tests only run on amd64 Linux by default.
+- Cargo registry, git index, and build artifacts are cached for Rust workflows.
 
 ## License
 
