@@ -58,6 +58,21 @@ Runs lint, format check, and tests for Python projects. Each job is independent 
 | `lint-command` | string | `"ruff check ."` | Lint command (empty to skip lint) |
 | `format-check-command` | string | `"ruff format --check ."` | Format check command (empty to skip) |
 
+### Debian (dpkg)
+
+#### `dpkg-build-deb.yml`
+
+Builds `.deb` packages from projects with a `debian/` directory using `jtdor/build-deb-action` and `dpkg-buildpackage`. Creates a GitHub Release with `.deb` artifacts when a `v*` tag is pushed.
+
+**Requirements:** A `debian/` directory with standard Debian packaging files (`control`, `rules`, `changelog`, etc.).
+
+| Input | Type | Default | Description |
+|-------|------|---------|-------------|
+| `extra-build-deps` | string | `"devscripts git"` | Extra build dependencies |
+| `before-build-hook` | string | `""` | Command to run before building |
+| `os` | string | `"ubuntu-latest"` | Runner OS |
+| `artifact-name` | string | `"debian-package"` | Name for the uploaded artifact |
+
 ### Go
 
 #### `go-ci.yml`
@@ -74,9 +89,10 @@ Runs `go build`, `go test`, and `go vet`.
 
 | Goal | Workflow |
 |------|---------|
-| Rust `.deb` packages | `rust-build-deb.yml` |
+| Rust `.deb` packages (cargo-deb) | `rust-build-deb.yml` |
 | Rust release binaries (Linux + Windows) | `rust-build-exes.yml` |
 | Rust CI (fmt, clippy, test) | `rust-ci.yml` |
+| Debian `.deb` packages (dpkg) | `dpkg-build-deb.yml` |
 | Python CI (lint, format, test) | `python-ci.yml` |
 | Go CI (build, test, vet) | `go-ci.yml` |
 
@@ -186,6 +202,28 @@ on:
 jobs:
   ci:
     uses: charlieh0tel/deb-workflows/.github/workflows/go-ci.yml@main
+```
+
+#### Debian package (dpkg, for projects with debian/ directory):
+```yaml
+name: Build Debian Package
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build-deb:
+    uses: charlieh0tel/deb-workflows/.github/workflows/dpkg-build-deb.yml@main
+    with:
+      before-build-hook: debchange --controlmaint --local="+ci${{ github.run_id }}~git$(git rev-parse --short HEAD)" "CI build"
+    secrets: inherit
 ```
 
 #### amd64-only deb (e.g. for an x86 server):
