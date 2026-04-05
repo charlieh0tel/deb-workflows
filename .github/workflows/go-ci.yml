@@ -1,0 +1,22 @@
+name: Go CI
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: "Go version (e.g. stable, 1.22)"
+        required: false
+        type: string
+        default: "stable"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-go@v5
+      with:
+        go-version: ${{ inputs.go-version }}
+    - run: go build ./...
+    - run: go test ./...
+    - run: go vet ./...

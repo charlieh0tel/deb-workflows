@@ -1,0 +1,80 @@
+name: Rust CI
+
+on:
+  workflow_call:
+    inputs:
+      toolchain:
+        description: "Rust toolchain (e.g. stable, nightly)"
+        required: false
+        type: string
+        default: "stable"
+      fmt-toolchain:
+        description: "Toolchain for cargo fmt (e.g. nightly)"
+        required: false
+        type: string
+        default: "nightly"
+      targets:
+        description: "Space-separated list of extra targets to install"
+        required: false
+        type: string
+        default: ""
+      build-deps:
+        description: "Space-separated apt packages to install"
+        required: false
+        type: string
+        default: ""
+      check-args:
+        description: "Extra arguments for cargo check and clippy"
+        required: false
+        type: string
+        default: ""
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.fmt-toolchain }}
+        components: rustfmt
+    - run: cargo fmt --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        targets: ${{ inputs.targets }}
+        components: clippy
+    - name: Install build dependencies
+      if: inputs.build-deps != ''
+      env:
+        BUILD_DEPS: ${{ inputs.build-deps }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y pkg-config ${BUILD_DEPS}
+    - env:
+        CHECK_ARGS: ${{ inputs.check-args }}
+      run: cargo clippy $CHECK_ARGS -- -D warnings
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.toolchain }}
+    - name: Install build dependencies
+      if: inputs.build-deps != ''
+      env:
+        BUILD_DEPS: ${{ inputs.build-deps }}
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y pkg-config ${BUILD_DEPS}
+    - run: cargo test --verbose
