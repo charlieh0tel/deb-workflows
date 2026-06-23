@@ -1,0 +1,15 @@
+name: Test python-ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  python-ci:
+    uses: ./.github/workflows/python-ci.yml
+    with:
+      test-command: "pytest tests/python/"
+      lint-command: "ruff check tests/python/"
+      format-check-command: "ruff format --check tests/python/"
