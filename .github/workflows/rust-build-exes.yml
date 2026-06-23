@@ -59,11 +59,14 @@ jobs:
       env:
         BUILD_DEPS: ${{ inputs.build-deps }}
       run: |
+        read -ra extra_deps <<< "$BUILD_DEPS"
         sudo apt-get update
-        sudo apt-get install -y pkg-config ${BUILD_DEPS}
+        sudo apt-get install -y pkg-config "${extra_deps[@]}"
 
     - name: Build release binary
-      run: cargo build --release --target ${{ matrix.target }} --verbose
+      env:
+        TARGET: ${{ matrix.target }}
+      run: cargo build --release --target "${TARGET}" --verbose
 
     - name: Run tests
       if: matrix.os == 'ubuntu-latest' && matrix.arch == 'amd64' && inputs.run-tests
@@ -73,10 +76,10 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         mkdir -p staging
-        for f in $(find target/${{ matrix.target }}/release -maxdepth 1 -type f -executable ! -name '*.d' ! -name '*.so'); do
+        while IFS= read -r f; do
           name=$(basename "$f")
           cp "$f" "staging/${name}-${{ matrix.target }}"
-        done
+        done < <(find "target/${{ matrix.target }}/release" -maxdepth 1 -type f -executable ! -name '*.d' ! -name '*.so')
 
     - name: Upload artifacts (Linux)
       if: runner.os == 'Linux'
