@@ -28,7 +28,7 @@ jobs:
   build-deb:
     runs-on: ${{ inputs.os }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Build Package
       uses: jtdor/build-deb-action@v1
