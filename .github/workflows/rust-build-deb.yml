@@ -18,6 +18,16 @@ on:
         required: false
         type: boolean
         default: true
+      package:
+        description: "Cargo package to build (cargo deb -p). Empty = default package."
+        required: false
+        type: string
+        default: ""
+      artifact-suffix:
+        description: "Suffix to disambiguate artifacts when one repo builds several packages."
+        required: false
+        type: string
+        default: ""
 
 env:
   CARGO_TERM_COLOR: always
@@ -79,7 +89,13 @@ jobs:
     - name: Build Debian package
       env:
         TARGET: ${{ matrix.target }}
-      run: cargo deb --no-build --target "${TARGET}"
+        PACKAGE: ${{ inputs.package }}
+      run: |
+        if [ -n "${PACKAGE}" ]; then
+          cargo deb --no-build -p "${PACKAGE}" --target "${TARGET}"
+        else
+          cargo deb --no-build --target "${TARGET}"
+        fi
 
     - name: Get package filename
       id: package
@@ -93,7 +109,7 @@ jobs:
     - name: Upload Debian package as artifact
       uses: actions/upload-artifact@v4
       with:
-        name: debian-package-${{ matrix.arch }}
+        name: debian-package-${{ inputs.artifact-suffix != '' && format('{0}-', inputs.artifact-suffix) || '' }}${{ matrix.arch }}
         path: ${{ steps.package.outputs.path }}
         retention-days: 30
 
