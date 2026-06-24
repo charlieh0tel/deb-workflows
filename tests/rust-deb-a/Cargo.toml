@@ -1,0 +1,11 @@
+[package]
+name = "fixture-a"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "fixture-a"
+path = "src/main.rs"
+
+[package.metadata.deb]
+maintainer = "Test <test@example.com>"

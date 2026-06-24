@@ -1,0 +1,24 @@
+name: Test rust-build-deb (multi-package)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-deb-a:
+    uses: ./.github/workflows/rust-build-deb.yml
+    with:
+      package: fixture-a
+      artifact-suffix: fixture-a
+      run-tests: false
+      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
+
+  build-deb-b:
+    uses: ./.github/workflows/rust-build-deb.yml
+    with:
+      package: fixture-b
+      artifact-suffix: fixture-b
+      run-tests: false
+      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
