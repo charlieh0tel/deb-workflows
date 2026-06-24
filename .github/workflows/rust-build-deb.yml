@@ -86,7 +86,13 @@ jobs:
     - name: Build release binary
       env:
         TARGET: ${{ matrix.target }}
-      run: cargo build --release --target "${TARGET}" --verbose
+        PACKAGE: ${{ inputs.package }}
+      run: |
+        if [ -n "${PACKAGE}" ]; then
+          cargo build --release -p "${PACKAGE}" --target "${TARGET}" --verbose
+        else
+          cargo build --release --target "${TARGET}" --verbose
+        fi
 
     - name: Run tests
       if: matrix.arch == 'amd64' && inputs.run-tests
