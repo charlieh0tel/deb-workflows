@@ -19,6 +19,8 @@ Builds `.deb` packages using `cargo-deb`. Creates a GitHub Release with `.deb` a
 | `build-deps` | string | `""` | Space-separated apt packages to install |
 | `targets` | string | amd64+arm64 | JSON array of build targets |
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 |
+| `package` | string | `""` | Cargo package to build (`cargo deb -p`). Empty = default package. |
+| `artifact-suffix` | string | `""` | Suffix added before arch in artifact name (e.g. `collector` → `debian-package-collector-amd64`). Required when calling this workflow multiple times in one repo to avoid artifact name collisions. |
 
 #### `rust-build-exes.yml`
 
@@ -129,6 +131,27 @@ jobs:
     uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@main
     with:
       build-deps: "libdbus-1-dev libasound2-dev"
+    secrets: inherit
+```
+
+#### Rust deb build (multi-package workspace):
+```yaml
+permissions:
+  contents: write
+
+jobs:
+  build-deb-collector:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@main
+    with:
+      package: my-collector
+      artifact-suffix: collector
+    secrets: inherit
+
+  build-deb-agent:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@main
+    with:
+      package: my-agent
+      artifact-suffix: agent
     secrets: inherit
 ```
 
