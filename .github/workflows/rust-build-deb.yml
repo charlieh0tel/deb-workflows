@@ -121,7 +121,7 @@ jobs:
         echo "name=$(basename "${PACKAGE}")" >> "${GITHUB_OUTPUT}"
 
     - name: Upload Debian package as artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: debian-package-${{ inputs.artifact-suffix != '' && format('{0}-', inputs.artifact-suffix) || '' }}${{ matrix.arch }}
         path: ${{ steps.package.outputs.path }}
@@ -135,7 +135,7 @@ jobs:
       contents: write
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         path: artifacts
         pattern: debian-package-*
