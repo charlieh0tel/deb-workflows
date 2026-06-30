@@ -28,6 +28,11 @@ on:
         required: false
         type: string
         default: ""
+      submodules:
+        description: "Whether to checkout submodules: 'true', 'false', or 'recursive'."
+        required: false
+        type: string
+        default: "false"
 
 env:
   CARGO_TERM_COLOR: always
@@ -44,6 +49,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v7
+      with:
+        submodules: ${{ inputs.submodules }}
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
