@@ -18,6 +18,11 @@ on:
         required: false
         type: boolean
         default: true
+      features:
+        description: "Comma-separated list of cargo features to enable"
+        required: false
+        type: string
+        default: ""
 
 env:
   CARGO_TERM_COLOR: always
@@ -63,14 +68,28 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y pkg-config "${extra_deps[@]}"
 
+    # bash everywhere: the default shell on Windows is PowerShell,
+    # where "${TARGET}" is an (empty) PowerShell variable, not the
+    # environment variable.
     - name: Build release binary
+      shell: bash
       env:
         TARGET: ${{ matrix.target }}
-      run: cargo build --release --target "${TARGET}" --verbose
+        FEATURES: ${{ inputs.features }}
+      run: |
+        args=()
+        if [[ -n "$FEATURES" ]]; then args+=(--features "$FEATURES"); fi
+        cargo build --release --target "${TARGET}" "${args[@]}" --verbose
 
     - name: Run tests
       if: matrix.os == 'ubuntu-latest' && matrix.arch == 'amd64' && inputs.run-tests
-      run: cargo test --verbose
+      shell: bash
+      env:
+        FEATURES: ${{ inputs.features }}
+      run: |
+        args=()
+        if [[ -n "$FEATURES" ]]; then args+=(--features "$FEATURES"); fi
+        cargo test "${args[@]}" --verbose
 
     - name: Collect binaries (Linux)
       if: runner.os == 'Linux'
