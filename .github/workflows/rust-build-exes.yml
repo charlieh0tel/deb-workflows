@@ -125,12 +125,21 @@ jobs:
         path: staging/*
         retention-days: 30
 
+  # NOTE: no job-level `permissions:` here on purpose. Declaring one inside a
+  # reusable workflow forces EVERY caller to grant at least that permission or
+  # their whole run dies with startup_failure — even on branch/PR runs where
+  # this job is skipped by the `if` below. Instead this job inherits whatever
+  # the caller grants. Callers that want releases MUST grant `contents: write`
+  # at the call site, e.g.:
+  #     jobs:
+  #       build:
+  #         uses: <org>/deb-workflows/.github/workflows/rust-build-exes.yml@main
+  #         permissions:
+  #           contents: write
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
     - name: Download all artifacts
       uses: actions/download-artifact@v8
@@ -139,6 +148,8 @@ jobs:
         pattern: binaries-*
 
     - name: Create Release
+      id: create_release
+      continue-on-error: true
       uses: softprops/action-gh-release@v3
       with:
         files: artifacts/**/*
@@ -147,3 +158,13 @@ jobs:
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Explain release failure
+      if: steps.create_release.outcome == 'failure'
+      run: |
+        echo "::error::Creating the release failed. The most common cause is a" \
+             "missing 'contents: write' permission: this reusable workflow" \
+             "inherits the caller's token, so the CALLER must grant" \
+             "'permissions: contents: write' on the job that calls" \
+             "rust-build-exes.yml. See the note above the 'release:' job." >&2
+        exit 1
