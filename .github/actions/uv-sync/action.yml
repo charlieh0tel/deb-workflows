@@ -1,0 +1,41 @@
+name: uv sync
+description: Sync a uv project, treating a committed lockfile as authoritative.
+
+inputs:
+  working-directory:
+    description: "Directory containing the uv project"
+    required: false
+    default: "."
+  lock-check:
+    description: "Assert the lockfile is up to date: 'auto' (strict when uv.lock exists), 'true', or 'false'"
+    required: false
+    default: "auto"
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    working-directory: ${{ inputs.working-directory }}
+    env:
+      LOCK_CHECK: ${{ inputs.lock-check }}
+    run: |
+      # A committed lock is meant to be authoritative, so verify it by default:
+      # bare `uv sync` would silently rewrite a stale lock and go green against
+      # a lock that no longer matches pyproject.toml. Gated on uv.lock existing,
+      # since uv detection also fires on uv.toml and [tool.uv], where no lock
+      # need exist and --locked would simply error.
+      case "${LOCK_CHECK}" in
+        auto)
+          if [ -f uv.lock ]; then locked=true; else locked=false; fi
+          ;;
+        true|false) locked="${LOCK_CHECK}" ;;
+        *) echo "::error::lock-check must be 'auto', 'true' or 'false' (got '${LOCK_CHECK}')"; exit 1 ;;
+      esac
+      if [ ! -f pyproject.toml ]; then
+        echo "No pyproject.toml; skipping uv sync"
+      elif [ "${locked}" = true ]; then
+        echo "Verifying uv.lock is up to date (lock-check=${LOCK_CHECK})"
+        uv sync --locked
+      else
+        uv sync
+      fi

@@ -1,0 +1,59 @@
+name: Run a check command
+description: Run a command, preferring the tool locked in the uv project environment.
+
+inputs:
+  working-directory:
+    description: "Directory to run in"
+    required: false
+    default: "."
+  command:
+    description: "Command to run. Must start with the tool name (see uv note below)"
+    required: true
+  uv:
+    description: "'true' to run under uv, anything else to run the command directly"
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - shell: bash
+    working-directory: ${{ inputs.working-directory }}
+    env:
+      CMD: ${{ inputs.command }}
+      UV: ${{ inputs.uv }}
+    run: |
+      tool=${CMD%% *}
+      # Never let running a check mutate the lock: bare `uv run` re-resolves and
+      # rewrites a stale uv.lock as a side effect. --frozen needs a lockfile to
+      # exist, so it is gated on one being committed.
+      if [ -f uv.lock ]; then frozen=--frozen; else frozen=; fi
+      # A leading VAR=value is not supported on either path: the command is
+      # word-split out of a variable, and bash only honors assignment prefixes
+      # at parse time, so it would be treated as the program name. Fail with
+      # something actionable rather than "command not found" or, under uv, an
+      # attempt to install a package called "VAR=value".
+      case "${tool}" in
+        *=*)
+          echo "::error::The command must start with the tool name, but it starts with '${tool}'."
+          echo "::error::Set variables in the caller's env: or inside the script being run, not as a command prefix."
+          exit 1
+          ;;
+      esac
+      # Word splitting of the command is intentional throughout.
+      # shellcheck disable=SC2086
+      if [ "${UV}" != true ]; then
+        $CMD
+      else
+        # Prefer the tool locked in the project environment so CI uses the
+        # pinned version rather than whatever is current on PyPI today. The
+        # check must look in the project venv specifically: `command -v` and
+        # `uv run <tool> --version` both also match a same-named tool present on
+        # the runner image, and would silently run that instead.
+        if [ -f pyproject.toml ] && [ -x "$(dirname "$(uv python find)")/${tool}" ]; then
+          echo "Running ${tool} from the project environment"
+          uv run $frozen --no-sync -- $CMD
+        else
+          echo "${tool} is not a project dependency; falling back to 'uv run --with'"
+          uv run $frozen --with "${tool}" -- $CMD
+        fi
+      fi

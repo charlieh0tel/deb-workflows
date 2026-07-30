@@ -51,13 +51,15 @@ jobs:
       lint-command: ""
       format-check-command: ""
 
-  # (b) uv caller with a deliberately stale lock: must FAIL.
+  # (b) uv caller with a deliberately stale lock: the sync must FAIL.
   #
-  # This cannot be expressed as a `uses:` job — GitHub does not allow
-  # continue-on-error on jobs that call a reusable workflow, so a failing call
-  # would just fail this workflow. Instead the sync step's decision logic is
-  # mirrored here and asserted against the stale fixture. Keep in sync with the
-  # "Sync dependencies (uv)" step in python-ci.yml.
+  # This cannot be a `uses:` job -- GitHub does not allow continue-on-error on
+  # jobs that call a reusable workflow -- but step-level continue-on-error is
+  # fine, so this drives the real uv-sync action rather than a copy of it.
+  #
+  # Referenced relatively on purpose: that resolves to THIS commit's action, so
+  # a PR changing the action is tested by the PR. python-ci.yml must use the
+  # absolute @main ref instead, to work for external callers.
   stale-lock-must-fail:
     runs-on: ubuntu-latest
     steps:
@@ -66,29 +68,29 @@ jobs:
       with:
         python-version: "3.12"
         enable-cache: true
-    - name: A stale committed lock must fail, not be silently rewritten
+    - name: Record the committed lock
+      id: before
+      working-directory: tests/python-uv-stale
+      run: echo "sum=$(md5sum uv.lock | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+    - name: Sync the stale fixture (expected to fail)
+      id: sync
+      continue-on-error: true
+      uses: ./.github/actions/uv-sync
+      with:
+        working-directory: tests/python-uv-stale
+        lock-check: auto
+    - name: Assert it failed and left the lock alone
       working-directory: tests/python-uv-stale
       env:
-        LOCK_CHECK: auto
+        OUTCOME: ${{ steps.sync.outcome }}
+        BEFORE: ${{ steps.before.outputs.sum }}
       run: |
-        case "${LOCK_CHECK}" in
-          auto)
-            if [ -f uv.lock ]; then locked=true; else locked=false; fi
-            ;;
-          true|false) locked="${LOCK_CHECK}" ;;
-          *) echo "::error::bad lock-check"; exit 1 ;;
-        esac
-        if [ "${locked}" != true ]; then
-          echo "::error::lock-check=auto must be strict when uv.lock exists"
+        if [ "${OUTCOME}" != failure ]; then
+          echo "::error::a stale uv.lock was accepted (uv-sync outcome: ${OUTCOME})"
           exit 1
         fi
-        before=$(md5sum uv.lock)
-        if uv sync --locked; then
-          echo "::error::stale uv.lock was accepted"
-          exit 1
-        fi
-        if [ "${before}" != "$(md5sum uv.lock)" ]; then
-          echo "::error::stale uv.lock was rewritten"
+        if [ "${BEFORE}" != "$(md5sum uv.lock | cut -d' ' -f1)" ]; then
+          echo "::error::a stale uv.lock was rewritten"
           exit 1
         fi
         echo "Stale lock correctly rejected, and left untouched."

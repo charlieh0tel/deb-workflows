@@ -65,6 +65,8 @@ If the tool isn't in the project's dependencies, it falls back to fetching it ad
 
 When a `uv.lock` is committed it is treated as authoritative: the sync runs `uv sync --locked`, so a lock that no longer matches `pyproject.toml` fails CI instead of being silently rewritten, and commands run with `--frozen` so a check can never mutate the lock as a side effect. Callers with no lockfile are unaffected (both flags require one to exist). Set `lock-check: false` to opt out.
 
+Each command must **start with the tool name** — `ruff check .`, not `MPLBACKEND=Agg python foo.py`. The command is word-split out of a variable, so a leading `VAR=value` is read as the program name rather than an assignment (this is true on both the uv and pip paths). Set variables in your caller's `env:` or inside the script being run; passing one as a prefix fails the job with an explicit error.
+
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `python-version` | string | `"3.12"` | Python version |
