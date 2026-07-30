@@ -51,9 +51,14 @@ on:
 
 # The uv-sync/uv-run steps below reference this repo's composite actions by
 # absolute ref. Relative `./` paths would resolve against the *caller's*
-# workspace and break for external callers, so the ref is pinned to @main and
-# must stay in lockstep with the ref callers use for this workflow (the README
-# documents @main throughout, and this repo publishes no tags).
+# workspace and break for external callers, so the ref is pinned to the v1
+# major tag -- the same ref callers are told to use for this workflow, so a
+# caller on @v1 gets a self-consistent bundle.
+#
+# Consequence for development: on main these steps run v1's actions, not
+# main's. After changing an action, move v1 and re-run CI to validate the new
+# pairing. The stale-lock test in test-python-ci.yml deliberately uses a
+# relative ref, so it always exercises the working tree's copy.
 #
 # Only ever needs to read the caller's code. A called workflow can only
 # narrow the caller's token, never widen it.
@@ -123,12 +128,12 @@ jobs:
       run: pip install ruff
     - name: Sync dependencies (uv)
       if: needs.detect.outputs.uv == 'true'
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@main
+      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@v1
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         lock-check: ${{ inputs.lock-check }}
     - name: Lint
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@main
+      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@v1
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         command: ${{ inputs.lint-command }}
@@ -163,12 +168,12 @@ jobs:
       run: pip install ruff
     - name: Sync dependencies (uv)
       if: needs.detect.outputs.uv == 'true'
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@main
+      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@v1
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         lock-check: ${{ inputs.lock-check }}
     - name: Format check
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@main
+      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@v1
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         command: ${{ inputs.format-check-command }}
@@ -211,12 +216,12 @@ jobs:
         fi
     - name: Sync dependencies (uv)
       if: needs.detect.outputs.uv == 'true'
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@main
+      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@v1
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         lock-check: ${{ inputs.lock-check }}
     - name: Test
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@main
+      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@v1
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         command: ${{ inputs.test-command }}

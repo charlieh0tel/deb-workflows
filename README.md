@@ -104,6 +104,25 @@ Runs `go build`, `go test`, and `go vet`.
 |-------|------|---------|-------------|
 | `go-version` | string | `"stable"` | Go version |
 
+## Versioning
+
+Pin callers to the `v1` major tag:
+
+```yaml
+uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
+```
+
+`v1` is a moving tag, re-pointed at each release the way `actions/checkout@v5` works: you get fixes without editing caller repos, and a breaking change would ship as `v2`. `@main` also works if you want the tip.
+
+`python-ci.yml` references this repo's composite actions at `@v1` as well, so a caller on `@v1` gets a self-consistent set. Two consequences when working on this repo:
+
+- On `main`, `python-ci.yml` runs **v1's** actions, not `main`'s. After changing anything under `.github/actions/`, move the tag and re-run CI to validate the new pairing:
+  ```sh
+  git tag -f v1 && git push -f origin v1
+  gh run rerun --failed   # or just push again
+  ```
+- `test-python-ci.yml`'s `stale-lock-must-fail` job refers to the action by relative path on purpose, so it always tests the working tree's copy.
+
 ## How to Adopt
 
 ### Step 1: Choose a workflow
@@ -139,7 +158,7 @@ permissions:
 
 jobs:
   build-deb:
-    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1
     secrets: inherit
 ```
 
@@ -147,7 +166,7 @@ jobs:
 ```yaml
 jobs:
   build-deb:
-    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1
     with:
       build-deps: "libdbus-1-dev libasound2-dev"
     secrets: inherit
@@ -160,14 +179,14 @@ permissions:
 
 jobs:
   build-deb-collector:
-    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1
     with:
       package: my-collector
       artifact-suffix: collector
     secrets: inherit
 
   build-deb-agent:
-    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1
     with:
       package: my-agent
       artifact-suffix: agent
@@ -178,7 +197,7 @@ jobs:
 ```yaml
 jobs:
   build-release:
-    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-exes.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-exes.yml@v1
     secrets: inherit
 ```
 
@@ -194,14 +213,14 @@ on:
 
 jobs:
   ci:
-    uses: charlieh0tel/deb-workflows/.github/workflows/rust-ci.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-ci.yml@v1
 ```
 
 #### Rust CI for embedded (custom target):
 ```yaml
 jobs:
   ci:
-    uses: charlieh0tel/deb-workflows/.github/workflows/rust-ci.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-ci.yml@v1
     with:
       targets: "thumbv6m-none-eabi"
       check-args: "--target thumbv6m-none-eabi"
@@ -219,14 +238,14 @@ on:
 
 jobs:
   ci:
-    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
 ```
 
 #### Python CI (lint only, no tests):
 ```yaml
 jobs:
   ci:
-    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
     with:
       test-command: ""
 ```
@@ -243,7 +262,7 @@ on:
 
 jobs:
   ci:
-    uses: charlieh0tel/deb-workflows/.github/workflows/go-ci.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/go-ci.yml@v1
 ```
 
 #### Debian package (dpkg, for projects with debian/ directory):
@@ -262,7 +281,7 @@ permissions:
 
 jobs:
   build-deb:
-    uses: charlieh0tel/deb-workflows/.github/workflows/dpkg-build-deb.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/dpkg-build-deb.yml@v1
     with:
       before-build-hook: debchange --controlmaint --local="+ci${{ github.run_id }}~git$(git rev-parse --short HEAD)" "CI build"
     secrets: inherit
@@ -272,7 +291,7 @@ jobs:
 ```yaml
 jobs:
   build-deb:
-    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@main
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1
     with:
       targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
     secrets: inherit
