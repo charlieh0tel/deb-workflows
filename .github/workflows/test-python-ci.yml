@@ -7,9 +7,19 @@ on:
     branches: [ main ]
 
 jobs:
+  # pip path: no uv markers at the repo root, so detection picks pip.
   python-ci:
     uses: ./.github/workflows/python-ci.yml
     with:
       test-command: "pytest tests/python/"
       lint-command: "ruff check tests/python/"
       format-check-command: "ruff format --check tests/python/"
+
+  # uv path: tests/python-uv has a uv.lock, so detection picks uv.
+  python-ci-uv:
+    uses: ./.github/workflows/python-ci.yml
+    with:
+      working-directory: tests/python-uv
+      test-command: "pytest ."
+      lint-command: "ruff check ."
+      format-check-command: "ruff format --check ."

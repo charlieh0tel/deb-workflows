@@ -52,10 +52,14 @@ Runs `cargo fmt` (nightly), `cargo clippy`, and `cargo test` as separate paralle
 
 Runs lint, format check, and tests for Python projects. Each job is independent and can be disabled by passing an empty string for its command.
 
+**uv support:** each job auto-detects uv (a `uv.lock`, `uv.toml`, or a `[tool.uv*]` section in `pyproject.toml` in `working-directory`). When detected, dependencies come from `uv sync` and commands run under `uv run` (with `ruff`/`pytest` injected via `--with`, so they need not be project dependencies); `requirements-file` is ignored. Otherwise the pip path is used, unchanged. Override detection with `use-uv`.
+
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `python-version` | string | `"3.12"` | Python version |
-| `requirements-file` | string | `"requirements.txt"` | Path to requirements file (empty to skip) |
+| `working-directory` | string | `"."` | Directory all commands run in (also where uv detection looks) |
+| `use-uv` | string | `"auto"` | `auto` (detect), `true` (force uv), or `false` (force pip) |
+| `requirements-file` | string | `"requirements.txt"` | Path to requirements file, relative to `working-directory` (empty to skip; ignored under uv) |
 | `test-command` | string | `"pytest --showlocals -rA"` | Test command (empty to skip tests) |
 | `lint-command` | string | `"ruff check ."` | Lint command (empty to skip lint) |
 | `format-check-command` | string | `"ruff format --check ."` | Format check command (empty to skip) |

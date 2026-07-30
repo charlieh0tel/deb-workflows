@@ -1,0 +1,12 @@
+[project]
+name = "python-uv-fixture"
+version = "0.1.0"
+description = "Fixture exercising the uv path of python-ci.yml"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest"]
+
+[tool.uv]
+package = false
