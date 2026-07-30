@@ -70,7 +70,7 @@ jobs:
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v6
+    - uses: astral-sh/setup-uv@v9
       if: steps.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
@@ -84,6 +84,8 @@ jobs:
         UV: ${{ steps.detect.outputs.uv }}
       run: |
         if [ "${UV}" = true ]; then
+          # Word splitting of the command string is intentional.
+          # shellcheck disable=SC2086
           uv run --with ruff -- $LINT_CMD
         else
           $LINT_CMD
@@ -119,7 +121,7 @@ jobs:
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v6
+    - uses: astral-sh/setup-uv@v9
       if: steps.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
@@ -133,6 +135,8 @@ jobs:
         UV: ${{ steps.detect.outputs.uv }}
       run: |
         if [ "${UV}" = true ]; then
+          # Word splitting of the command string is intentional.
+          # shellcheck disable=SC2086
           uv run --with ruff -- $FMT_CMD
         else
           $FMT_CMD
@@ -168,7 +172,7 @@ jobs:
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v6
+    - uses: astral-sh/setup-uv@v9
       if: steps.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
@@ -199,6 +203,8 @@ jobs:
         UV: ${{ steps.detect.outputs.uv }}
       run: |
         if [ "${UV}" = true ]; then
+          # Word splitting of the command string is intentional.
+          # shellcheck disable=SC2086
           uv run --with pytest -- $TEST_CMD
         else
           $TEST_CMD
