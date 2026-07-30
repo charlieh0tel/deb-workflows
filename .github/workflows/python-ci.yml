@@ -66,7 +66,7 @@ jobs:
         esac
         echo "Using uv: ${uv}"
         echo "uv=${uv}" >> "$GITHUB_OUTPUT"
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v7
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
@@ -117,7 +117,7 @@ jobs:
         esac
         echo "Using uv: ${uv}"
         echo "uv=${uv}" >> "$GITHUB_OUTPUT"
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v7
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
@@ -168,7 +168,7 @@ jobs:
         esac
         echo "Using uv: ${uv}"
         echo "uv=${uv}" >> "$GITHUB_OUTPUT"
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v7
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
