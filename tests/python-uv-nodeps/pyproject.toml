@@ -1,0 +1,9 @@
+[project]
+name = "python-uv-nodeps-fixture"
+version = "0.1.0"
+description = "Fixture: uv path with no tools in the project deps, exercising the 'uv run --with' fallback"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false

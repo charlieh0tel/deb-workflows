@@ -52,13 +52,24 @@ Runs `cargo fmt` (nightly), `cargo clippy`, and `cargo test` as separate paralle
 
 Runs lint, format check, and tests for Python projects. Each job is independent and can be disabled by passing an empty string for its command.
 
-**uv support:** each job auto-detects uv (a `uv.lock`, `uv.toml`, or a `[tool.uv*]` section in `pyproject.toml` in `working-directory`). When detected, dependencies come from `uv sync` and commands run under `uv run` (with `ruff`/`pytest` injected via `--with`, so they need not be project dependencies); `requirements-file` is ignored. Otherwise the pip path is used, unchanged. Override detection with `use-uv`.
+**uv support:** uv is detected once (a `uv.lock`, `uv.toml`, or a `[tool.uv*]` section in `pyproject.toml` in `working-directory`) and the result is shared by all three jobs. When detected, `uv sync` installs the project's dependencies and `requirements-file` is ignored. Otherwise the pip path is used, unchanged. Override detection with `use-uv`.
+
+Under uv, each command's tool is taken from the **project environment** when it's there (`uv run --no-sync -- ruff check .`), so CI uses the version your lockfile pins rather than whatever is current on PyPI. Declare your tools in a dependency group to get this:
+
+```toml
+[dependency-groups]
+dev = ["pytest", "ruff"]
+```
+
+If the tool isn't in the project's dependencies, it falls back to fetching it ad hoc (`uv run --with ruff -- ...`). Pair this with `locked: true` so a stale `uv.lock` fails CI instead of being silently re-resolved.
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `python-version` | string | `"3.12"` | Python version |
 | `working-directory` | string | `"."` | Directory all commands run in (also where uv detection looks) |
 | `use-uv` | string | `"auto"` | `auto` (detect), `true` (force uv), or `false` (force pip) |
+| `locked` | boolean | `false` | Assert the lockfile is up to date (`uv sync --locked`). uv only. |
+| `system-packages` | string | `""` | Space-separated apt packages installed before dependencies (e.g. `libportaudio2` for `sounddevice`) |
 | `requirements-file` | string | `"requirements.txt"` | Path to requirements file, relative to `working-directory` (empty to skip; ignored under uv) |
 | `test-command` | string | `"pytest --showlocals -rA"` | Test command (empty to skip tests) |
 | `lint-command` | string | `"ruff check ."` | Lint command (empty to skip lint) |

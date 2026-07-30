@@ -15,11 +15,26 @@ jobs:
       lint-command: "ruff check tests/python/"
       format-check-command: "ruff format --check tests/python/"
 
-  # uv path: tests/python-uv has a uv.lock, so detection picks uv.
+  # uv path, tools locked as project deps: detection picks uv, the lock is
+  # asserted up to date, and ruff/pytest come from the project environment.
+  # Also exercises system-packages (libportaudio2 is small and mirrors the
+  # sounddevice case that motivated the input).
   python-ci-uv:
     uses: ./.github/workflows/python-ci.yml
     with:
       working-directory: tests/python-uv
+      locked: true
+      system-packages: libportaudio2
       test-command: "pytest ."
       lint-command: "ruff check ."
       format-check-command: "ruff format --check ."
+
+  # uv path, no tools in the project deps: exercises the 'uv run --with'
+  # fallback. One job is enough to cover that branch.
+  python-ci-uv-fallback:
+    uses: ./.github/workflows/python-ci.yml
+    with:
+      working-directory: tests/python-uv-nodeps
+      test-command: "pytest ."
+      lint-command: ""
+      format-check-command: ""

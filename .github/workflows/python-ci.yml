@@ -18,6 +18,16 @@ on:
         required: false
         type: string
         default: "auto"
+      locked:
+        description: "Assert the uv lockfile is up to date (uv sync --locked). uv only."
+        required: false
+        type: boolean
+        default: false
+      system-packages:
+        description: "Space-separated apt packages to install before dependencies"
+        required: false
+        type: string
+        default: ""
       requirements-file:
         description: "Path to requirements.txt, relative to working-directory (empty to skip install; ignored when uv is used)"
         required: false
@@ -40,9 +50,15 @@ on:
         default: "ruff format --check ."
 
 jobs:
-  lint:
-    if: inputs.lint-command != ''
+  # Detected once and consumed by the three jobs below via `needs`, so the
+  # detection rules live in exactly one place. A composite action would also
+  # work, but relative `uses: ./...` paths in a *reusable* workflow resolve
+  # against the caller's workspace, so it would break for external callers.
+  detect:
+    if: inputs.lint-command != '' || inputs.format-check-command != '' || inputs.test-command != ''
     runs-on: ubuntu-latest
+    outputs:
+      uv: ${{ steps.detect.outputs.uv }}
     steps:
     - uses: actions/checkout@v7
       with:
@@ -66,119 +82,160 @@ jobs:
         esac
         echo "Using uv: ${uv}"
         echo "uv=${uv}" >> "$GITHUB_OUTPUT"
+
+  lint:
+    if: inputs.lint-command != ''
+    needs: detect
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+    - name: Install system packages
+      if: inputs.system-packages != ''
+      env:
+        PKGS: ${{ inputs.system-packages }}
+      run: |
+        # Word splitting of the package list is intentional.
+        # shellcheck disable=SC2086
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS
     - uses: actions/setup-python@v7
-      if: steps.detect.outputs.uv != 'true'
+      if: needs.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
     - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
-      if: steps.detect.outputs.uv == 'true'
+      if: needs.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
         enable-cache: true
-    - if: steps.detect.outputs.uv != 'true'
+    - if: needs.detect.outputs.uv != 'true'
       run: pip install ruff
+    - name: Sync dependencies (uv)
+      if: needs.detect.outputs.uv == 'true'
+      working-directory: ${{ inputs.working-directory || '.' }}
+      env:
+        LOCKED: ${{ inputs.locked }}
+      run: |
+        if [ ! -f pyproject.toml ]; then
+          echo "No pyproject.toml; skipping uv sync"
+        elif [ "${LOCKED}" = true ]; then
+          uv sync --locked
+        else
+          uv sync
+        fi
     - name: Lint
       working-directory: ${{ inputs.working-directory || '.' }}
       env:
-        LINT_CMD: ${{ inputs.lint-command }}
-        UV: ${{ steps.detect.outputs.uv }}
+        CMD: ${{ inputs.lint-command }}
+        UV: ${{ needs.detect.outputs.uv }}
       run: |
-        if [ "${UV}" = true ]; then
-          # Word splitting of the command string is intentional.
-          # shellcheck disable=SC2086
-          uv run --with ruff -- $LINT_CMD
+        tool=${CMD%% *}
+        # Prefer the tool locked in the project environment, so CI uses the
+        # pinned version rather than whatever is current on PyPI today. The
+        # check must look in the project venv specifically: `command -v` would
+        # also match a same-named tool preinstalled on the runner image.
+        # Word splitting of the command string is intentional throughout.
+        # shellcheck disable=SC2086
+        if [ "${UV}" != true ]; then
+          $CMD
+        elif [ -f pyproject.toml ] && [ -x "$(dirname "$(uv python find)")/${tool}" ]; then
+          echo "Running ${tool} from the project environment"
+          uv run --no-sync -- $CMD
         else
-          $LINT_CMD
+          echo "${tool} is not a project dependency; falling back to 'uv run --with'"
+          uv run --with "${tool}" -- $CMD
         fi
 
   format:
     if: inputs.format-check-command != ''
+    needs: detect
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
       with:
         submodules: recursive
-    - name: Detect uv
-      id: detect
-      working-directory: ${{ inputs.working-directory || '.' }}
+    - name: Install system packages
+      if: inputs.system-packages != ''
       env:
-        USE_UV: ${{ inputs.use-uv }}
+        PKGS: ${{ inputs.system-packages }}
       run: |
-        case "${USE_UV}" in
-          true|false) uv="${USE_UV}" ;;
-          auto)
-            if [ -f uv.lock ] || [ -f uv.toml ] || grep -qs '^\[tool\.uv' pyproject.toml; then
-              uv=true
-            else
-              uv=false
-            fi
-            ;;
-          *) echo "::error::use-uv must be 'auto', 'true' or 'false' (got '${USE_UV}')"; exit 1 ;;
-        esac
-        echo "Using uv: ${uv}"
-        echo "uv=${uv}" >> "$GITHUB_OUTPUT"
+        # Word splitting of the package list is intentional.
+        # shellcheck disable=SC2086
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS
     - uses: actions/setup-python@v7
-      if: steps.detect.outputs.uv != 'true'
+      if: needs.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
     - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
-      if: steps.detect.outputs.uv == 'true'
+      if: needs.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
         enable-cache: true
-    - if: steps.detect.outputs.uv != 'true'
+    - if: needs.detect.outputs.uv != 'true'
       run: pip install ruff
+    - name: Sync dependencies (uv)
+      if: needs.detect.outputs.uv == 'true'
+      working-directory: ${{ inputs.working-directory || '.' }}
+      env:
+        LOCKED: ${{ inputs.locked }}
+      run: |
+        if [ ! -f pyproject.toml ]; then
+          echo "No pyproject.toml; skipping uv sync"
+        elif [ "${LOCKED}" = true ]; then
+          uv sync --locked
+        else
+          uv sync
+        fi
     - name: Format check
       working-directory: ${{ inputs.working-directory || '.' }}
       env:
-        FMT_CMD: ${{ inputs.format-check-command }}
-        UV: ${{ steps.detect.outputs.uv }}
+        CMD: ${{ inputs.format-check-command }}
+        UV: ${{ needs.detect.outputs.uv }}
       run: |
-        if [ "${UV}" = true ]; then
-          # Word splitting of the command string is intentional.
-          # shellcheck disable=SC2086
-          uv run --with ruff -- $FMT_CMD
+        tool=${CMD%% *}
+        # Prefer the tool locked in the project environment, so CI uses the
+        # pinned version rather than whatever is current on PyPI today. The
+        # check must look in the project venv specifically: `command -v` would
+        # also match a same-named tool preinstalled on the runner image.
+        # Word splitting of the command string is intentional throughout.
+        # shellcheck disable=SC2086
+        if [ "${UV}" != true ]; then
+          $CMD
+        elif [ -f pyproject.toml ] && [ -x "$(dirname "$(uv python find)")/${tool}" ]; then
+          echo "Running ${tool} from the project environment"
+          uv run --no-sync -- $CMD
         else
-          $FMT_CMD
+          echo "${tool} is not a project dependency; falling back to 'uv run --with'"
+          uv run --with "${tool}" -- $CMD
         fi
 
   test:
     if: inputs.test-command != ''
+    needs: detect
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
       with:
         submodules: recursive
-    - name: Detect uv
-      id: detect
-      working-directory: ${{ inputs.working-directory || '.' }}
+    - name: Install system packages
+      if: inputs.system-packages != ''
       env:
-        USE_UV: ${{ inputs.use-uv }}
+        PKGS: ${{ inputs.system-packages }}
       run: |
-        case "${USE_UV}" in
-          true|false) uv="${USE_UV}" ;;
-          auto)
-            if [ -f uv.lock ] || [ -f uv.toml ] || grep -qs '^\[tool\.uv' pyproject.toml; then
-              uv=true
-            else
-              uv=false
-            fi
-            ;;
-          *) echo "::error::use-uv must be 'auto', 'true' or 'false' (got '${USE_UV}')"; exit 1 ;;
-        esac
-        echo "Using uv: ${uv}"
-        echo "uv=${uv}" >> "$GITHUB_OUTPUT"
+        # Word splitting of the package list is intentional.
+        # shellcheck disable=SC2086
+        sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS
     - uses: actions/setup-python@v7
-      if: steps.detect.outputs.uv != 'true'
+      if: needs.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
     - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
-      if: steps.detect.outputs.uv == 'true'
+      if: needs.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
         enable-cache: true
     - name: Install dependencies
-      if: steps.detect.outputs.uv != 'true'
+      if: needs.detect.outputs.uv != 'true'
       working-directory: ${{ inputs.working-directory || '.' }}
       env:
         REQS: ${{ inputs.requirements-file }}
@@ -188,24 +245,37 @@ jobs:
           pip install -r "${REQS}"
         fi
     - name: Sync dependencies (uv)
-      if: steps.detect.outputs.uv == 'true'
+      if: needs.detect.outputs.uv == 'true'
       working-directory: ${{ inputs.working-directory || '.' }}
+      env:
+        LOCKED: ${{ inputs.locked }}
       run: |
-        if [ -f pyproject.toml ]; then
-          uv sync
-        else
+        if [ ! -f pyproject.toml ]; then
           echo "No pyproject.toml; skipping uv sync"
+        elif [ "${LOCKED}" = true ]; then
+          uv sync --locked
+        else
+          uv sync
         fi
     - name: Test
       working-directory: ${{ inputs.working-directory || '.' }}
       env:
-        TEST_CMD: ${{ inputs.test-command }}
-        UV: ${{ steps.detect.outputs.uv }}
+        CMD: ${{ inputs.test-command }}
+        UV: ${{ needs.detect.outputs.uv }}
       run: |
-        if [ "${UV}" = true ]; then
-          # Word splitting of the command string is intentional.
-          # shellcheck disable=SC2086
-          uv run --with pytest -- $TEST_CMD
+        tool=${CMD%% *}
+        # Prefer the tool locked in the project environment, so CI uses the
+        # pinned version rather than whatever is current on PyPI today. The
+        # check must look in the project venv specifically: `command -v` would
+        # also match a same-named tool preinstalled on the runner image.
+        # Word splitting of the command string is intentional throughout.
+        # shellcheck disable=SC2086
+        if [ "${UV}" != true ]; then
+          $CMD
+        elif [ -f pyproject.toml ] && [ -x "$(dirname "$(uv python find)")/${tool}" ]; then
+          echo "Running ${tool} from the project environment"
+          uv run --no-sync -- $CMD
         else
-          $TEST_CMD
+          echo "${tool} is not a project dependency; falling back to 'uv run --with'"
+          uv run --with "${tool}" -- $CMD
         fi
