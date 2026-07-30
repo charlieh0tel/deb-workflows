@@ -70,7 +70,7 @@ jobs:
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v9
+    - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
       if: steps.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
@@ -121,7 +121,7 @@ jobs:
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v9
+    - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
       if: steps.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
@@ -172,7 +172,7 @@ jobs:
       if: steps.detect.outputs.uv != 'true'
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v9
+    - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
       if: steps.detect.outputs.uv == 'true'
       with:
         python-version: ${{ inputs.python-version }}
