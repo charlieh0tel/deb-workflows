@@ -1,0 +1,9 @@
+[project]
+name = "python-uv-nolock-fixture"
+version = "0.1.0"
+description = "Fixture: uv detected via [tool.uv] with no committed lockfile"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.uv]
+package = false

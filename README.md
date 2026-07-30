@@ -61,14 +61,16 @@ Under uv, each command's tool is taken from the **project environment** when it'
 dev = ["pytest", "ruff"]
 ```
 
-If the tool isn't in the project's dependencies, it falls back to fetching it ad hoc (`uv run --with ruff -- ...`). Pair this with `locked: true` so a stale `uv.lock` fails CI instead of being silently re-resolved.
+If the tool isn't in the project's dependencies, it falls back to fetching it ad hoc (`uv run --with ruff -- ...`).
+
+When a `uv.lock` is committed it is treated as authoritative: the sync runs `uv sync --locked`, so a lock that no longer matches `pyproject.toml` fails CI instead of being silently rewritten, and commands run with `--frozen` so a check can never mutate the lock as a side effect. Callers with no lockfile are unaffected (both flags require one to exist). Set `lock-check: false` to opt out.
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `python-version` | string | `"3.12"` | Python version |
 | `working-directory` | string | `"."` | Directory all commands run in (also where uv detection looks) |
 | `use-uv` | string | `"auto"` | `auto` (detect), `true` (force uv), or `false` (force pip) |
-| `locked` | boolean | `false` | Assert the lockfile is up to date (`uv sync --locked`). uv only. |
+| `lock-check` | string | `"auto"` | Assert the lockfile is up to date: `auto` (strict when `uv.lock` exists), `true`, `false`. uv only. |
 | `system-packages` | string | `""` | Space-separated apt packages installed before dependencies (e.g. `libportaudio2` for `sounddevice`) |
 | `requirements-file` | string | `"requirements.txt"` | Path to requirements file, relative to `working-directory` (empty to skip; ignored under uv) |
 | `test-command` | string | `"pytest --showlocals -rA"` | Test command (empty to skip tests) |

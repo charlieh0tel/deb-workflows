@@ -18,11 +18,11 @@ on:
         required: false
         type: string
         default: "auto"
-      locked:
-        description: "Assert the uv lockfile is up to date (uv sync --locked). uv only."
+      lock-check:
+        description: "Assert the uv lockfile is up to date: 'auto' (strict when uv.lock exists), 'true', or 'false'. uv only."
         required: false
-        type: boolean
-        default: false
+        type: string
+        default: "auto"
       system-packages:
         description: "Space-separated apt packages to install before dependencies"
         required: false
@@ -48,6 +48,11 @@ on:
         required: false
         type: string
         default: "ruff format --check ."
+
+# Only ever needs to read the caller's code. A called workflow can only
+# narrow the caller's token, never widen it.
+permissions:
+  contents: read
 
 jobs:
   # Detected once and consumed by the three jobs below via `needs`, so the
@@ -114,11 +119,23 @@ jobs:
       if: needs.detect.outputs.uv == 'true'
       working-directory: ${{ inputs.working-directory || '.' }}
       env:
-        LOCKED: ${{ inputs.locked }}
+        LOCK_CHECK: ${{ inputs.lock-check }}
       run: |
+        # A committed lock is meant to be authoritative, so verify it by
+        # default: bare `uv sync` would silently rewrite a stale lock and go
+        # green against a lock that no longer matches pyproject.toml. Gated on
+        # uv.lock existing, since uv detection also fires on uv.toml/[tool.uv].
+        case "${LOCK_CHECK}" in
+          auto)
+            if [ -f uv.lock ]; then locked=true; else locked=false; fi
+            ;;
+          true|false) locked="${LOCK_CHECK}" ;;
+          *) echo "::error::lock-check must be 'auto', 'true' or 'false' (got '${LOCK_CHECK}')"; exit 1 ;;
+        esac
         if [ ! -f pyproject.toml ]; then
           echo "No pyproject.toml; skipping uv sync"
-        elif [ "${LOCKED}" = true ]; then
+        elif [ "${locked}" = true ]; then
+          echo "Verifying uv.lock is up to date (lock-check=${LOCK_CHECK})"
           uv sync --locked
         else
           uv sync
@@ -130,20 +147,25 @@ jobs:
         UV: ${{ needs.detect.outputs.uv }}
       run: |
         tool=${CMD%% *}
+        # Never let running a check mutate the lock: bare `uv run` re-resolves
+        # and rewrites a stale uv.lock as a side effect. --frozen needs a
+        # lockfile to exist, so it is gated on one being committed.
+        if [ -f uv.lock ]; then frozen=--frozen; else frozen=; fi
         # Prefer the tool locked in the project environment, so CI uses the
         # pinned version rather than whatever is current on PyPI today. The
-        # check must look in the project venv specifically: `command -v` would
-        # also match a same-named tool preinstalled on the runner image.
-        # Word splitting of the command string is intentional throughout.
+        # check must look in the project venv specifically: `command -v` and
+        # `uv run <tool> --version` both also match a same-named tool present
+        # on the runner image, and would silently run that instead.
+        # Word splitting is intentional throughout.
         # shellcheck disable=SC2086
         if [ "${UV}" != true ]; then
           $CMD
         elif [ -f pyproject.toml ] && [ -x "$(dirname "$(uv python find)")/${tool}" ]; then
           echo "Running ${tool} from the project environment"
-          uv run --no-sync -- $CMD
+          uv run $frozen --no-sync -- $CMD
         else
           echo "${tool} is not a project dependency; falling back to 'uv run --with'"
-          uv run --with "${tool}" -- $CMD
+          uv run $frozen --with "${tool}" -- $CMD
         fi
 
   format:
@@ -177,11 +199,23 @@ jobs:
       if: needs.detect.outputs.uv == 'true'
       working-directory: ${{ inputs.working-directory || '.' }}
       env:
-        LOCKED: ${{ inputs.locked }}
+        LOCK_CHECK: ${{ inputs.lock-check }}
       run: |
+        # A committed lock is meant to be authoritative, so verify it by
+        # default: bare `uv sync` would silently rewrite a stale lock and go
+        # green against a lock that no longer matches pyproject.toml. Gated on
+        # uv.lock existing, since uv detection also fires on uv.toml/[tool.uv].
+        case "${LOCK_CHECK}" in
+          auto)
+            if [ -f uv.lock ]; then locked=true; else locked=false; fi
+            ;;
+          true|false) locked="${LOCK_CHECK}" ;;
+          *) echo "::error::lock-check must be 'auto', 'true' or 'false' (got '${LOCK_CHECK}')"; exit 1 ;;
+        esac
         if [ ! -f pyproject.toml ]; then
           echo "No pyproject.toml; skipping uv sync"
-        elif [ "${LOCKED}" = true ]; then
+        elif [ "${locked}" = true ]; then
+          echo "Verifying uv.lock is up to date (lock-check=${LOCK_CHECK})"
           uv sync --locked
         else
           uv sync
@@ -193,20 +227,25 @@ jobs:
         UV: ${{ needs.detect.outputs.uv }}
       run: |
         tool=${CMD%% *}
+        # Never let running a check mutate the lock: bare `uv run` re-resolves
+        # and rewrites a stale uv.lock as a side effect. --frozen needs a
+        # lockfile to exist, so it is gated on one being committed.
+        if [ -f uv.lock ]; then frozen=--frozen; else frozen=; fi
         # Prefer the tool locked in the project environment, so CI uses the
         # pinned version rather than whatever is current on PyPI today. The
-        # check must look in the project venv specifically: `command -v` would
-        # also match a same-named tool preinstalled on the runner image.
-        # Word splitting of the command string is intentional throughout.
+        # check must look in the project venv specifically: `command -v` and
+        # `uv run <tool> --version` both also match a same-named tool present
+        # on the runner image, and would silently run that instead.
+        # Word splitting is intentional throughout.
         # shellcheck disable=SC2086
         if [ "${UV}" != true ]; then
           $CMD
         elif [ -f pyproject.toml ] && [ -x "$(dirname "$(uv python find)")/${tool}" ]; then
           echo "Running ${tool} from the project environment"
-          uv run --no-sync -- $CMD
+          uv run $frozen --no-sync -- $CMD
         else
           echo "${tool} is not a project dependency; falling back to 'uv run --with'"
-          uv run --with "${tool}" -- $CMD
+          uv run $frozen --with "${tool}" -- $CMD
         fi
 
   test:
@@ -248,11 +287,23 @@ jobs:
       if: needs.detect.outputs.uv == 'true'
       working-directory: ${{ inputs.working-directory || '.' }}
       env:
-        LOCKED: ${{ inputs.locked }}
+        LOCK_CHECK: ${{ inputs.lock-check }}
       run: |
+        # A committed lock is meant to be authoritative, so verify it by
+        # default: bare `uv sync` would silently rewrite a stale lock and go
+        # green against a lock that no longer matches pyproject.toml. Gated on
+        # uv.lock existing, since uv detection also fires on uv.toml/[tool.uv].
+        case "${LOCK_CHECK}" in
+          auto)
+            if [ -f uv.lock ]; then locked=true; else locked=false; fi
+            ;;
+          true|false) locked="${LOCK_CHECK}" ;;
+          *) echo "::error::lock-check must be 'auto', 'true' or 'false' (got '${LOCK_CHECK}')"; exit 1 ;;
+        esac
         if [ ! -f pyproject.toml ]; then
           echo "No pyproject.toml; skipping uv sync"
-        elif [ "${LOCKED}" = true ]; then
+        elif [ "${locked}" = true ]; then
+          echo "Verifying uv.lock is up to date (lock-check=${LOCK_CHECK})"
           uv sync --locked
         else
           uv sync
@@ -264,18 +315,23 @@ jobs:
         UV: ${{ needs.detect.outputs.uv }}
       run: |
         tool=${CMD%% *}
+        # Never let running a check mutate the lock: bare `uv run` re-resolves
+        # and rewrites a stale uv.lock as a side effect. --frozen needs a
+        # lockfile to exist, so it is gated on one being committed.
+        if [ -f uv.lock ]; then frozen=--frozen; else frozen=; fi
         # Prefer the tool locked in the project environment, so CI uses the
         # pinned version rather than whatever is current on PyPI today. The
-        # check must look in the project venv specifically: `command -v` would
-        # also match a same-named tool preinstalled on the runner image.
-        # Word splitting of the command string is intentional throughout.
+        # check must look in the project venv specifically: `command -v` and
+        # `uv run <tool> --version` both also match a same-named tool present
+        # on the runner image, and would silently run that instead.
+        # Word splitting is intentional throughout.
         # shellcheck disable=SC2086
         if [ "${UV}" != true ]; then
           $CMD
         elif [ -f pyproject.toml ] && [ -x "$(dirname "$(uv python find)")/${tool}" ]; then
           echo "Running ${tool} from the project environment"
-          uv run --no-sync -- $CMD
+          uv run $frozen --no-sync -- $CMD
         else
           echo "${tool} is not a project dependency; falling back to 'uv run --with'"
-          uv run --with "${tool}" -- $CMD
+          uv run $frozen --with "${tool}" -- $CMD
         fi

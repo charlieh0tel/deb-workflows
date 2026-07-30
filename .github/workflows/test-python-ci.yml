@@ -6,8 +6,11 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
-  # pip path: no uv markers at the repo root, so detection picks pip.
+  # (d) non-uv caller: no uv markers at the repo root, so detection picks pip.
   python-ci:
     uses: ./.github/workflows/python-ci.yml
     with:
@@ -15,22 +18,21 @@ jobs:
       lint-command: "ruff check tests/python/"
       format-check-command: "ruff format --check tests/python/"
 
-  # uv path, tools locked as project deps: detection picks uv, the lock is
-  # asserted up to date, and ruff/pytest come from the project environment.
-  # Also exercises system-packages (libportaudio2 is small and mirrors the
-  # sounddevice case that motivated the input).
+  # (a) uv caller with a valid lock and its tools locked as project deps:
+  # lock-check=auto asserts the lock, and ruff/pytest come from the project
+  # environment. Also exercises system-packages (libportaudio2 is small and
+  # mirrors the sounddevice case that motivated the input).
   python-ci-uv:
     uses: ./.github/workflows/python-ci.yml
     with:
       working-directory: tests/python-uv
-      locked: true
       system-packages: libportaudio2
       test-command: "pytest ."
       lint-command: "ruff check ."
       format-check-command: "ruff format --check ."
 
-  # uv path, no tools in the project deps: exercises the 'uv run --with'
-  # fallback. One job is enough to cover that branch.
+  # uv caller with a lock but no tools in its deps: exercises the
+  # 'uv run --frozen --with' fallback. One job covers that branch.
   python-ci-uv-fallback:
     uses: ./.github/workflows/python-ci.yml
     with:
@@ -38,3 +40,55 @@ jobs:
       test-command: "pytest ."
       lint-command: ""
       format-check-command: ""
+
+  # (c) uv caller with no lockfile: detection still fires on [tool.uv], sync
+  # must stay bare (--locked and --frozen both require a lockfile to exist).
+  python-ci-uv-nolock:
+    uses: ./.github/workflows/python-ci.yml
+    with:
+      working-directory: tests/python-uv-nolock
+      test-command: "pytest ."
+      lint-command: ""
+      format-check-command: ""
+
+  # (b) uv caller with a deliberately stale lock: must FAIL.
+  #
+  # This cannot be expressed as a `uses:` job — GitHub does not allow
+  # continue-on-error on jobs that call a reusable workflow, so a failing call
+  # would just fail this workflow. Instead the sync step's decision logic is
+  # mirrored here and asserted against the stale fixture. Keep in sync with the
+  # "Sync dependencies (uv)" step in python-ci.yml.
+  stale-lock-must-fail:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
+      with:
+        python-version: "3.12"
+        enable-cache: true
+    - name: A stale committed lock must fail, not be silently rewritten
+      working-directory: tests/python-uv-stale
+      env:
+        LOCK_CHECK: auto
+      run: |
+        case "${LOCK_CHECK}" in
+          auto)
+            if [ -f uv.lock ]; then locked=true; else locked=false; fi
+            ;;
+          true|false) locked="${LOCK_CHECK}" ;;
+          *) echo "::error::bad lock-check"; exit 1 ;;
+        esac
+        if [ "${locked}" != true ]; then
+          echo "::error::lock-check=auto must be strict when uv.lock exists"
+          exit 1
+        fi
+        before=$(md5sum uv.lock)
+        if uv sync --locked; then
+          echo "::error::stale uv.lock was accepted"
+          exit 1
+        fi
+        if [ "${before}" != "$(md5sum uv.lock)" ]; then
+          echo "::error::stale uv.lock was rewritten"
+          exit 1
+        fi
+        echo "Stale lock correctly rejected, and left untouched."

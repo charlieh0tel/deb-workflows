@@ -1,0 +1,9 @@
+[project]
+name = "python-uv-stale-fixture"
+version = "0.1.0"
+description = "Fixture: deliberately STALE uv.lock. pyproject declares a dependency the lock does not contain, so `uv sync --locked` must fail. Do not 'fix' this lock."
+requires-python = ">=3.12"
+dependencies = ["packaging"]
+
+[tool.uv]
+package = false
