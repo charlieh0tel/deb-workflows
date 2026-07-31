@@ -133,7 +133,7 @@ jobs:
   # at the call site, e.g.:
   #     jobs:
   #       build:
-  #         uses: <org>/deb-workflows/.github/workflows/rust-build-exes.yml@main
+  #         uses: <org>/deb-workflows/.github/workflows/rust-build-exes.yml@v1
   #         permissions:
   #           contents: write
   release:
