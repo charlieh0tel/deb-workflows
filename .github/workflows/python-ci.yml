@@ -104,26 +104,11 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
-      with:
-        submodules: recursive
-    - name: Install system packages
-      if: inputs.system-packages != ''
-      env:
-        PKGS: ${{ inputs.system-packages }}
-      run: |
-        # Word splitting of the package list is intentional.
-        # shellcheck disable=SC2086
-        sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS
-    - uses: actions/setup-python@v7
-      if: needs.detect.outputs.uv != 'true'
+    - uses: charlieh0tel/deb-workflows/.github/actions/setup-python-ci@v1
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
-      if: needs.detect.outputs.uv == 'true'
-      with:
-        python-version: ${{ inputs.python-version }}
-        enable-cache: true
+        system-packages: ${{ inputs.system-packages }}
+        uv: ${{ needs.detect.outputs.uv }}
     - if: needs.detect.outputs.uv != 'true'
       run: pip install ruff
     - name: Sync dependencies (uv)
@@ -144,26 +129,11 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
-      with:
-        submodules: recursive
-    - name: Install system packages
-      if: inputs.system-packages != ''
-      env:
-        PKGS: ${{ inputs.system-packages }}
-      run: |
-        # Word splitting of the package list is intentional.
-        # shellcheck disable=SC2086
-        sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS
-    - uses: actions/setup-python@v7
-      if: needs.detect.outputs.uv != 'true'
+    - uses: charlieh0tel/deb-workflows/.github/actions/setup-python-ci@v1
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
-      if: needs.detect.outputs.uv == 'true'
-      with:
-        python-version: ${{ inputs.python-version }}
-        enable-cache: true
+        system-packages: ${{ inputs.system-packages }}
+        uv: ${{ needs.detect.outputs.uv }}
     - if: needs.detect.outputs.uv != 'true'
       run: pip install ruff
     - name: Sync dependencies (uv)
@@ -184,26 +154,11 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
-      with:
-        submodules: recursive
-    - name: Install system packages
-      if: inputs.system-packages != ''
-      env:
-        PKGS: ${{ inputs.system-packages }}
-      run: |
-        # Word splitting of the package list is intentional.
-        # shellcheck disable=SC2086
-        sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS
-    - uses: actions/setup-python@v7
-      if: needs.detect.outputs.uv != 'true'
+    - uses: charlieh0tel/deb-workflows/.github/actions/setup-python-ci@v1
       with:
         python-version: ${{ inputs.python-version }}
-    - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
-      if: needs.detect.outputs.uv == 'true'
-      with:
-        python-version: ${{ inputs.python-version }}
-        enable-cache: true
+        system-packages: ${{ inputs.system-packages }}
+        uv: ${{ needs.detect.outputs.uv }}
     - name: Install dependencies
       if: needs.detect.outputs.uv != 'true'
       working-directory: ${{ inputs.working-directory || '.' }}

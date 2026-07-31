@@ -1,0 +1,42 @@
+name: Set up a Python CI job
+description: Checkout, apt packages, and the Python or uv toolchain shared by the lint/format/test jobs.
+
+inputs:
+  python-version:
+    description: "Python version"
+    required: false
+    default: "3.12"
+  system-packages:
+    description: "Space-separated apt packages to install (empty to skip)"
+    required: false
+    default: ""
+  uv:
+    description: "'true' to install uv, anything else to install CPython via setup-python"
+    required: true
+
+runs:
+  using: composite
+  steps:
+  - uses: actions/checkout@v7
+    with:
+      submodules: recursive
+  # Before the toolchain, since a Python package may need its headers or shared
+  # library present at install or import time.
+  - name: Install system packages
+    if: inputs.system-packages != ''
+    shell: bash
+    env:
+      PKGS: ${{ inputs.system-packages }}
+    run: |
+      # Word splitting of the package list is intentional.
+      # shellcheck disable=SC2086
+      sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS
+  - uses: actions/setup-python@v7
+    if: inputs.uv != 'true'
+    with:
+      python-version: ${{ inputs.python-version }}
+  - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
+    if: inputs.uv == 'true'
+    with:
+      python-version: ${{ inputs.python-version }}
+      enable-cache: true

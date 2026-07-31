@@ -116,7 +116,7 @@ uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
 
 `python-ci.yml` references this repo's composite actions at `@v1` as well, so a caller on `@v1` gets a self-consistent set. Two consequences when working on this repo:
 
-- On `main`, `python-ci.yml` runs **v1's** actions, not `main`'s. After changing anything under `.github/actions/`, move the tag and re-run CI to validate the new pairing:
+- On `main`, `python-ci.yml` runs **v1's** actions (`setup-python-ci`, `uv-sync`, `uv-run`), not `main`'s. After changing anything under `.github/actions/`, move the tag and re-run CI to validate the new pairing. A *new* action must be tagged before the workflow referencing it lands on `main`, or every job fails to resolve it:
   ```sh
   git tag -f v1 && git push -f origin v1
   gh run rerun --failed   # or just push again
