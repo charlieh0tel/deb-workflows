@@ -116,15 +116,19 @@ uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
 
 `v1` is a moving tag, re-pointed at each release the way `actions/checkout@v5` works: you get fixes without editing caller repos, and a breaking change would ship as `v2`. `@main` also works if you want the tip.
 
-`python-ci.yml` references this repo's composite actions at `@v1` as well, so a caller on `@v1` gets a self-consistent set. Two consequences when working on this repo:
+`python-ci.yml` loads this repo's composite actions (`setup-python-ci`, `uv-sync`, `uv-run`) from the commit the workflow file itself came from: each job checks this repository out at `job.workflow_sha` into `.deb-workflows/` and uses `./.deb-workflows/.github/actions/...`. A caller on `@v1` therefore gets v1's actions, and a pull request against this repo gets its own -- no tag has to move for a change under `.github/actions/` to be tested.
 
-- On `main`, `python-ci.yml` runs **v1's** actions (`setup-python-ci`, `uv-sync`, `uv-run`), not `main`'s. After changing anything under `.github/actions/`, move the tag and re-run CI to validate the new pairing. A *new* action must be tagged before the workflow referencing it lands on `main`, or every job fails to resolve it:
-  ```sh
-  # -a keeps v1 an annotated tag; a bare `git tag -f` would demote it.
-  git tag -f -a v1 -m "v1" && git push -f origin v1
-  gh run rerun --failed   # or just push again
-  ```
-- `test-python-ci.yml`'s `stale-lock-must-fail` job refers to the action by relative path on purpose, so it always tests the working tree's copy.
+Two things follow when working on this repo:
+
+- The jobs check the caller out themselves, before fetching `.deb-workflows`; a root checkout wipes a non-empty workspace, so the order matters. That is why `setup-python-ci` does not check out.
+- `job.workflow_sha` is not in GitHub's contexts reference and is unknown to actionlint, so `.github/actionlint.yaml` suppresses the unknown-property error for that one file.
+
+Moving `v1` is still how a release reaches callers:
+
+```sh
+# -a keeps v1 an annotated tag; a bare `git tag -f` would demote it.
+git tag -f -a v1 -m "v1" && git push -f origin v1
+```
 
 ## How to Adopt
 

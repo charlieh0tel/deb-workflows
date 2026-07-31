@@ -49,16 +49,20 @@ on:
         type: string
         default: "ruff format --check ."
 
-# The uv-sync/uv-run steps below reference this repo's composite actions by
-# absolute ref. Relative `./` paths would resolve against the *caller's*
-# workspace and break for external callers, so the ref is pinned to the v1
-# major tag -- the same ref callers are told to use for this workflow, so a
-# caller on @v1 gets a self-consistent bundle.
+# A bare `./` path to this repo's composite actions would resolve against the
+# *caller's* workspace and break external callers, so each job checks this
+# repository out at the commit this workflow file itself came from and loads
+# the actions from there.
 #
-# Consequence for development: on main these steps run v1's actions, not
-# main's. After changing an action, move v1 and re-run CI to validate the new
-# pairing. The stale-lock test in test-python-ci.yml deliberately uses a
-# relative ref, so it always exercises the working tree's copy.
+# job.workflow_sha is that commit: for a caller on @v1 it is v1's, and when
+# test-python-ci.yml calls this file as ./ it is the commit under review, so a
+# PR tests its own actions. Undocumented but stable, and unknown to actionlint
+# -- see .github/actionlint.yaml. For an annotated tag it is the tag object
+# rather than the commit, which actions/checkout resolves either way.
+#
+# The caller checkout must come first: a root checkout wipes a non-empty
+# workspace, so doing it second would delete .deb-workflows. That ordering is
+# why setup-python-ci no longer checks the caller out itself.
 #
 # Only ever needs to read the caller's code. A called workflow can only
 # narrow the caller's token, never widen it.
@@ -104,7 +108,16 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: charlieh0tel/deb-workflows/.github/actions/setup-python-ci@v1
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+    - name: Fetch the actions from this workflow's own commit
+      uses: actions/checkout@v7
+      with:
+        repository: ${{ job.workflow_repository }}
+        ref: ${{ job.workflow_sha }}
+        path: .deb-workflows
+    - uses: ./.deb-workflows/.github/actions/setup-python-ci
       with:
         python-version: ${{ inputs.python-version }}
         system-packages: ${{ inputs.system-packages }}
@@ -113,12 +126,12 @@ jobs:
       run: pip install ruff
     - name: Sync dependencies (uv)
       if: needs.detect.outputs.uv == 'true'
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@v1
+      uses: ./.deb-workflows/.github/actions/uv-sync
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         lock-check: ${{ inputs.lock-check }}
     - name: Lint
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@v1
+      uses: ./.deb-workflows/.github/actions/uv-run
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         command: ${{ inputs.lint-command }}
@@ -129,7 +142,16 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: charlieh0tel/deb-workflows/.github/actions/setup-python-ci@v1
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+    - name: Fetch the actions from this workflow's own commit
+      uses: actions/checkout@v7
+      with:
+        repository: ${{ job.workflow_repository }}
+        ref: ${{ job.workflow_sha }}
+        path: .deb-workflows
+    - uses: ./.deb-workflows/.github/actions/setup-python-ci
       with:
         python-version: ${{ inputs.python-version }}
         system-packages: ${{ inputs.system-packages }}
@@ -138,12 +160,12 @@ jobs:
       run: pip install ruff
     - name: Sync dependencies (uv)
       if: needs.detect.outputs.uv == 'true'
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@v1
+      uses: ./.deb-workflows/.github/actions/uv-sync
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         lock-check: ${{ inputs.lock-check }}
     - name: Format check
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@v1
+      uses: ./.deb-workflows/.github/actions/uv-run
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         command: ${{ inputs.format-check-command }}
@@ -154,7 +176,16 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: charlieh0tel/deb-workflows/.github/actions/setup-python-ci@v1
+    - uses: actions/checkout@v7
+      with:
+        submodules: recursive
+    - name: Fetch the actions from this workflow's own commit
+      uses: actions/checkout@v7
+      with:
+        repository: ${{ job.workflow_repository }}
+        ref: ${{ job.workflow_sha }}
+        path: .deb-workflows
+    - uses: ./.deb-workflows/.github/actions/setup-python-ci
       with:
         python-version: ${{ inputs.python-version }}
         system-packages: ${{ inputs.system-packages }}
@@ -171,12 +202,12 @@ jobs:
         fi
     - name: Sync dependencies (uv)
       if: needs.detect.outputs.uv == 'true'
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@v1
+      uses: ./.deb-workflows/.github/actions/uv-sync
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         lock-check: ${{ inputs.lock-check }}
     - name: Test
-      uses: charlieh0tel/deb-workflows/.github/actions/uv-run@v1
+      uses: ./.deb-workflows/.github/actions/uv-run
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         command: ${{ inputs.test-command }}
