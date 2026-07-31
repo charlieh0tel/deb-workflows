@@ -1,0 +1,12 @@
+# actionlint's `job` context type predates job.workflow_sha / workflow_ref /
+# workflow_repository / workflow_file_path, which GitHub does populate at
+# runtime (verified on a runner) but does not list in the contexts reference.
+# python-ci.yml needs them to load its composite actions from its own commit.
+#
+# Scoped to that one file on purpose: anywhere else, an unknown `job` property
+# is far more likely to be a typo than a gap in actionlint. Drop this once
+# actionlint knows the fields.
+paths:
+  .github/workflows/python-ci.yml:
+    ignore:
+      - 'property "workflow_(sha|ref|repository|file_path)" is not defined in object type'

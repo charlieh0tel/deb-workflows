@@ -1,5 +1,10 @@
 name: Set up a Python CI job
-description: Checkout, apt packages, and the Python or uv toolchain shared by the lint/format/test jobs.
+description: Apt packages and the Python or uv toolchain shared by the lint/format/test jobs.
+
+# The caller must have checked its own repository out already. This action
+# cannot do it: the caller has to check out before fetching the copy of this
+# repository that this action is loaded from, because a root checkout wipes a
+# non-empty workspace and would delete that copy.
 
 inputs:
   python-version:
@@ -17,9 +22,6 @@ inputs:
 runs:
   using: composite
   steps:
-  - uses: actions/checkout@v7
-    with:
-      submodules: recursive
   # Before the toolchain, since a Python package may need its headers or shared
   # library present at install or import time.
   - name: Install system packages

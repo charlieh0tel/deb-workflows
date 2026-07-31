@@ -57,12 +57,10 @@ jobs:
   # jobs that call a reusable workflow -- but step-level continue-on-error is
   # fine, so this drives the real uv-sync action rather than a copy of it.
   #
-  # Referenced relatively on purpose: that resolves to THIS commit's action, so
-  # a PR changing the action is tested by the PR. python-ci.yml cannot do the
-  # same -- external callers need an absolute ref -- so it pins the actions at
-  # @v1, and the ./ job above therefore exercises python-ci.yml from the PR
-  # driving the RELEASED actions. This job is the only coverage of a PR's own
-  # uv-sync; setup-python-ci and uv-run have no equivalent.
+  # Referenced relatively on purpose: that resolves to THIS commit's action.
+  # The jobs above reach the same place by a longer route -- python-ci.yml
+  # checks out its own commit and loads the actions from there -- so a PR now
+  # tests its own actions either way.
   stale-lock-must-fail:
     runs-on: ubuntu-latest
     steps:
