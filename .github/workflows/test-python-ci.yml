@@ -58,8 +58,11 @@ jobs:
   # fine, so this drives the real uv-sync action rather than a copy of it.
   #
   # Referenced relatively on purpose: that resolves to THIS commit's action, so
-  # a PR changing the action is tested by the PR. python-ci.yml must use the
-  # absolute @main ref instead, to work for external callers.
+  # a PR changing the action is tested by the PR. python-ci.yml cannot do the
+  # same -- external callers need an absolute ref -- so it pins the actions at
+  # @v1, and the ./ job above therefore exercises python-ci.yml from the PR
+  # driving the RELEASED actions. This job is the only coverage of a PR's own
+  # uv-sync; setup-python-ci and uv-run have no equivalent.
   stale-lock-must-fail:
     runs-on: ubuntu-latest
     steps:
