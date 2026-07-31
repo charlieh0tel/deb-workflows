@@ -9,12 +9,17 @@ on:
         type: string
         default: "stable"
 
+# Pure CI: never writes. A called workflow can only narrow the caller's
+# token, never widen it.
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v7
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v7
       with:
         go-version: ${{ inputs.go-version }}
     - run: go build ./...
