@@ -120,7 +120,8 @@ uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
 
 - On `main`, `python-ci.yml` runs **v1's** actions (`setup-python-ci`, `uv-sync`, `uv-run`), not `main`'s. After changing anything under `.github/actions/`, move the tag and re-run CI to validate the new pairing. A *new* action must be tagged before the workflow referencing it lands on `main`, or every job fails to resolve it:
   ```sh
-  git tag -f v1 && git push -f origin v1
+  # -a keeps v1 an annotated tag; a bare `git tag -f` would demote it.
+  git tag -f -a v1 -m "v1" && git push -f origin v1
   gh run rerun --failed   # or just push again
   ```
 - `test-python-ci.yml`'s `stale-lock-must-fail` job refers to the action by relative path on purpose, so it always tests the working tree's copy.
