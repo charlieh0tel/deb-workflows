@@ -1,0 +1,164 @@
+name: Test released tags
+
+# The test-*.yml workflows call the reusable workflows as ./, so they gate a
+# change against the code in the commit under review. Callers instead pin a
+# major tag, so nothing there exercises what callers actually run. This does:
+# every job below calls a published tag.
+#
+# It cannot be a merge gate -- it tests published tags, so it only reports on
+# what has already shipped. Do not add it to branch protection.
+#
+# The caller repo is still deb-workflows, so the reusable workflows check out
+# this commit's tests/ fixtures and run them through tagged workflow logic. A
+# commit that changes a fixture and the workflow that consumes it will fail
+# here until the tag is moved; that is the intended signal, not a flake.
+#
+# Adding v2: duplicate each job, s/@v1/@v2/ and s/-v1/-v2/ in the job ids and
+# artifact names. Artifact names must stay unique across every job in this
+# workflow, since all refs upload into one run.
+
+on:
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch:
+
+# Mirrors what a releasing caller grants; the widest of the per-test files.
+permissions:
+  contents: write
+
+jobs:
+  # Fails when v1 points somewhere that was never on main -- a tag cut from a
+  # branch, or left dangling by a force-push. Staleness alone is reported but
+  # not failed: lagging behind main is normal between releases.
+  tag-drift:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+    - name: Check v1 points at a commit on main
+      run: |
+        git fetch --quiet origin main
+        for tag in v1; do
+          if ! git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "::error::tag ${tag} does not exist"
+            exit 1
+          fi
+          sha=$(git rev-parse "${tag}^{commit}")
+          if ! git merge-base --is-ancestor "${sha}" origin/main; then
+            echo "::error::${tag} (${sha}) is not an ancestor of main"
+            exit 1
+          fi
+          behind=$(git rev-list --count "${sha}..origin/main")
+          if [ "${behind}" -eq 0 ]; then
+            echo "${tag} is level with main (${sha})"
+          else
+            echo "::notice::${tag} is ${behind} commit(s) behind main; callers pinned to it will not see those changes"
+          fi
+        done
+
+  rust-ci-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-ci.yml@v1
+
+  go-ci-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/go-ci.yml@v1
+
+  dpkg-build-deb-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/dpkg-build-deb.yml@v1
+    with:
+      source-dir: tests/debian-pkg
+      artifact-name: debian-package-fixture-v1
+
+  build-deb-a-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1
+    with:
+      package: fixture-a
+      artifact-suffix: fixture-a-v1
+      run-tests: false
+      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
+
+  build-deb-b-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1
+    with:
+      package: fixture-b
+      artifact-suffix: fixture-b-v1
+      run-tests: false
+      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
+
+  rust-build-exes-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-exes.yml@v1
+    with:
+      targets: >-
+        [{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-latest","arch":"amd64"},
+         {"target":"x86_64-pc-windows-msvc","os":"windows-latest","arch":"amd64"}]
+
+  python-ci-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
+    with:
+      test-command: "pytest tests/python/"
+      lint-command: "ruff check tests/python/"
+      format-check-command: "ruff format --check tests/python/"
+
+  python-ci-uv-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
+    with:
+      working-directory: tests/python-uv
+      system-packages: libportaudio2
+      test-command: "pytest ."
+      lint-command: "ruff check ."
+      format-check-command: "ruff format --check ."
+
+  python-ci-uv-fallback-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
+    with:
+      working-directory: tests/python-uv-nodeps
+      test-command: "pytest ."
+      lint-command: ""
+      format-check-command: ""
+
+  python-ci-uv-nolock-v1:
+    uses: charlieh0tel/deb-workflows/.github/workflows/python-ci.yml@v1
+    with:
+      working-directory: tests/python-uv-nolock
+      test-command: "pytest ."
+      lint-command: ""
+      format-check-command: ""
+
+  # Absolute @v1 ref on purpose, unlike the ./ ref in test-python-ci.yml: here
+  # the released action is the thing under test, since python-ci.yml@v1 calls
+  # uv-sync@v1.
+  stale-lock-must-fail-v1:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+    - uses: astral-sh/setup-uv@v9.0.0  # no floating vN tag published after v7
+      with:
+        python-version: "3.12"
+        enable-cache: true
+    - name: Record the committed lock
+      id: before
+      working-directory: tests/python-uv-stale
+      run: echo "sum=$(md5sum uv.lock | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+    - name: Sync the stale fixture (expected to fail)
+      id: sync
+      continue-on-error: true
+      uses: charlieh0tel/deb-workflows/.github/actions/uv-sync@v1
+      with:
+        working-directory: tests/python-uv-stale
+        lock-check: auto
+    - name: Assert it failed and left the lock alone
+      working-directory: tests/python-uv-stale
+      env:
+        OUTCOME: ${{ steps.sync.outcome }}
+        BEFORE: ${{ steps.before.outputs.sum }}
+      run: |
+        if [ "${OUTCOME}" != failure ]; then
+          echo "::error::a stale uv.lock was accepted (uv-sync outcome: ${OUTCOME})"
+          exit 1
+        fi
+        if [ "${BEFORE}" != "$(md5sum uv.lock | cut -d' ' -f1)" ]; then
+          echo "::error::a stale uv.lock was rewritten"
+          exit 1
+        fi
+        echo "Stale lock correctly rejected, and left untouched."
