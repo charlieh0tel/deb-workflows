@@ -1,0 +1,11 @@
+name: Test go-ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  go-ci:
+    uses: ./.github/workflows/go-ci.yml

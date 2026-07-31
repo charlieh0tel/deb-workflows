@@ -1,0 +1,21 @@
+name: Test dpkg-build-deb
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+# Mirrors what a real caller grants. The reusable workflow's release job is
+# skipped here (it only runs on v* tags), but callers that release need this.
+permissions:
+  contents: write
+
+jobs:
+  dpkg-build-deb:
+    uses: ./.github/workflows/dpkg-build-deb.yml
+    with:
+      # The fixture lives under tests/ rather than at the repo root, which is
+      # also what exercises the source-dir input.
+      source-dir: tests/debian-pkg
+      artifact-name: debian-package-fixture

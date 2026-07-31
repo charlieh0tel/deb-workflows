@@ -1,0 +1,14 @@
+Source: deb-workflows-fixture
+Section: utils
+Priority: optional
+Maintainer: Test <test@example.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: deb-workflows-fixture
+Architecture: all
+Depends: ${misc:Depends}
+Description: Fixture exercising dpkg-build-deb.yml
+ Minimal architecture-independent package used to verify that
+ dpkg-build-deb.yml produces a .deb. It installs one trivial script.

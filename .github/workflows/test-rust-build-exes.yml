@@ -1,0 +1,22 @@
+name: Test rust-build-exes
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  rust-build-exes:
+    uses: ./.github/workflows/rust-build-exes.yml
+    with:
+      # amd64 Linux plus Windows: Windows is where the shell/quoting bug in
+      # b6277f2 lived, so it is worth the runner minutes. arm64 Linux is
+      # dropped to keep this cheap; the matrix plumbing is shared with
+      # rust-build-deb, which is covered by its own test.
+      targets: >-
+        [{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-latest","arch":"amd64"},
+         {"target":"x86_64-pc-windows-msvc","os":"windows-latest","arch":"amd64"}]

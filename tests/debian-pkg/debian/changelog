@@ -1,0 +1,5 @@
+deb-workflows-fixture (0.1.0) unstable; urgency=low
+
+  * Initial fixture for testing dpkg-build-deb.yml.
+
+ -- Test <test@example.com>  Thu, 30 Jul 2026 12:00:00 -0700

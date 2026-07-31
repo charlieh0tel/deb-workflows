@@ -13,6 +13,11 @@ on:
         required: false
         type: string
         default: ""
+      source-dir:
+        description: "Directory containing the debian/ tree (relative to the repo root)"
+        required: false
+        type: string
+        default: "./"
       os:
         description: "Runner OS"
         required: false
@@ -33,6 +38,7 @@ jobs:
     - name: Build Package
       uses: jtdor/build-deb-action@v1
       with:
+        source-dir: ${{ inputs.source-dir }}
         before-build-hook: ${{ inputs.before-build-hook }}
         extra-build-deps: ${{ inputs.extra-build-deps }}
 
