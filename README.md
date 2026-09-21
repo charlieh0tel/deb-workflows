@@ -130,6 +130,20 @@ Moving `v1` is still how a release reaches callers:
 git tag -f -a v1 -m "v1" && git push -f origin v1
 ```
 
+### Pinned third-party actions
+
+Every third-party `uses:` in this repo is pinned to a full commit SHA, with the tag it came from in a trailing comment:
+
+```yaml
+- uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+```
+
+A tag can be moved; a SHA cannot, so a compromised upstream tag can't silently change what runs here. `.github/dependabot.yml` opens a weekly grouped PR that bumps the SHAs and their comments together. Keep the comment accurate when hand-editing a pin — it is the only human-readable record of the version.
+
+`dtolnay/rust-toolchain` is pinned the same way, so the toolchain can no longer come from the branch name (`@stable`): every call site passes `toolchain:` explicitly.
+
+This repo's own refs are not SHA-pinned and should not be: `test-released.yml` exists to exercise the published `@v1` tag, and the `./` paths in the other test workflows exist to exercise the working tree.
+
 ## How to Adopt
 
 ### Step 1: Choose a workflow

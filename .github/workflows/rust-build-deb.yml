@@ -48,27 +48,29 @@ jobs:
         include: ${{ fromJson(inputs.targets) }}
 
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         submodules: ${{ inputs.submodules }}
 
     - name: Install Rust toolchain
-      uses: dtolnay/rust-toolchain@stable
+      uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de  # v1
+      with:
+        toolchain: stable
 
     - name: Cache cargo registry
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: ~/.cargo/registry
         key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo index
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: ~/.cargo/git
         key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Cache cargo build
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: target
         key: ${{ runner.os }}-${{ matrix.target }}-${{ inputs.package }}-cargo-build-target-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
@@ -83,7 +85,7 @@ jobs:
 
     - name: Cache cargo-deb
       id: cache-cargo-deb
-      uses: actions/cache@v6
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: ~/.cargo/bin/cargo-deb
         key: cargo-deb-${{ runner.os }}-${{ runner.arch }}-v1
@@ -133,7 +135,7 @@ jobs:
         echo "name=$(basename "${PACKAGE}")" >> "${GITHUB_OUTPUT}"
 
     - name: Upload Debian package as artifact
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
         name: debian-package-${{ inputs.artifact-suffix != '' && format('{0}-', inputs.artifact-suffix) || '' }}${{ matrix.arch }}
         path: ${{ steps.package.outputs.path }}
@@ -150,13 +152,13 @@ jobs:
       contents: write
     steps:
     - name: Download all artifacts
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
       with:
         path: artifacts
         pattern: debian-package-*
 
     - name: Create Release
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
       with:
         files: artifacts/**/*.deb
         draft: false

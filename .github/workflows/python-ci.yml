@@ -80,7 +80,7 @@ jobs:
     outputs:
       uv: ${{ steps.detect.outputs.uv }}
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         submodules: recursive
     - name: Detect uv
@@ -108,11 +108,11 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         submodules: recursive
     - name: Fetch the actions from this workflow's own commit
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         repository: ${{ job.workflow_repository }}
         ref: ${{ job.workflow_sha }}
@@ -142,11 +142,11 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         submodules: recursive
     - name: Fetch the actions from this workflow's own commit
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         repository: ${{ job.workflow_repository }}
         ref: ${{ job.workflow_sha }}
@@ -176,11 +176,11 @@ jobs:
     needs: detect
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v7
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         submodules: recursive
     - name: Fetch the actions from this workflow's own commit
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
         repository: ${{ job.workflow_repository }}
         ref: ${{ job.workflow_sha }}

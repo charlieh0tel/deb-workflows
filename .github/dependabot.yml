@@ -1,0 +1,18 @@
+version: 2
+
+updates:
+# Every `uses:` in this repo is pinned to a full commit SHA with the tag it
+# came from in a trailing comment. Dependabot bumps both together, so the
+# comment stays truthful.
+#
+# `/` covers .github/workflows; setup-python-ci is the one composite action
+# with its own `uses:`, and needs its own entry for it to be scanned.
+- package-ecosystem: github-actions
+  directories:
+  - /
+  - /.github/actions/setup-python-ci
+  schedule:
+    interval: weekly
+  groups:
+    actions:
+      patterns: ["*"]
