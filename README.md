@@ -21,6 +21,8 @@ Builds `.deb` packages using `cargo-deb`. Creates a GitHub Release with `.deb` a
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 |
 | `package` | string | `""` | Cargo package to build (`cargo deb -p`). Empty = default package. |
 | `artifact-suffix` | string | `""` | Suffix added before arch in artifact name (e.g. `collector` → `debian-package-collector-amd64`). Required when calling this workflow multiple times in one repo to avoid artifact name collisions. |
+| `submodules` | string | `"false"` | Checkout submodules: `true`, `false`, or `recursive` |
+| `toolchain` | string | `"stable"` | Rust toolchain to install. A `rust-toolchain.toml` in the calling repo wins when cargo runs, so a repo that pins should pass the same version here rather than install a second toolchain. |
 
 #### `rust-build-exes.yml`
 

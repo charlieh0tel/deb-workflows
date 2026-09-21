@@ -33,6 +33,11 @@ on:
         required: false
         type: string
         default: "false"
+      toolchain:
+        description: "Rust toolchain to install, e.g. 'stable' or '1.98.1'.  A rust-toolchain.toml in the calling repo overrides this when cargo runs, so callers that pin should pass the same version here to avoid installing two toolchains."
+        required: false
+        type: string
+        default: "stable"
 
 env:
   CARGO_TERM_COLOR: always
@@ -55,7 +60,7 @@ jobs:
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de  # v1
       with:
-        toolchain: stable
+        toolchain: ${{ inputs.toolchain }}
 
     - name: Cache cargo registry
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
