@@ -14,6 +14,8 @@ Builds `.deb` packages using `cargo-deb`. Creates a GitHub Release with `.deb` a
 
 **Default targets:** amd64 (`ubuntu-latest`) and arm64 (`ubuntu-22.04-arm`, for Debian bookworm glibc compat).
 
+Each matrix entry's `target` is added with rustup before the build, so a pinned toolchain or a non-host target works without extra setup. A true cross build may still need its linker in `build-deps`.
+
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `build-deps` | string | `""` | Space-separated apt packages to install |
@@ -30,11 +32,15 @@ Builds release binaries for Linux and Windows. Creates a GitHub Release with bin
 
 **Default targets:** amd64 Linux, arm64 Linux, x86_64 Windows.
 
+Each matrix entry's `target` is added with rustup before the build, so a pinned toolchain or a non-host target works without extra setup. A true cross build may still need its linker in `build-deps`.
+
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `build-deps` | string | `""` | Space-separated apt packages to install on Linux |
 | `targets` | string | amd64+arm64+win | JSON array of build targets |
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 Linux |
+| `features` | string | `""` | Comma-separated cargo features to enable for build and test |
+| `toolchain` | string | `"stable"` | Rust toolchain to install. A `rust-toolchain.toml` in the calling repo wins when cargo runs, so a repo that pins should pass the same version here rather than install a second toolchain. |
 
 #### `rust-ci.yml`
 

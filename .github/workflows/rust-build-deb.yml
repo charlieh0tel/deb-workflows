@@ -61,6 +61,11 @@ jobs:
       uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de  # v1
       with:
         toolchain: ${{ inputs.toolchain }}
+        # Install the rustup target this matrix entry builds. A no-op when it
+        # is the runner's own target, and what makes a cross target (or a
+        # pinned toolchain, which starts out with no targets beyond its host)
+        # actually buildable.
+        targets: ${{ matrix.target }}
 
     - name: Cache cargo registry
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
