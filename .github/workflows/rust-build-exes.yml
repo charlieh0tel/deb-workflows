@@ -23,6 +23,16 @@ on:
         required: false
         type: string
         default: ""
+      audit:
+        description: "Audit dependencies against the RustSec advisory database before releasing"
+        required: false
+        type: boolean
+        default: true
+      audit-args:
+        description: "Extra arguments for cargo audit (e.g. '--ignore RUSTSEC-2024-0001' for an advisory with no fix yet)"
+        required: false
+        type: string
+        default: ""
       toolchain:
         description: "Rust toolchain to install, e.g. 'stable' or '1.98.1'. Empty (the default) takes the channel from the caller's rust-toolchain.toml, falling back to stable. Cargo obeys rust-toolchain.toml whatever is installed, so leaving this empty is how a repo that pins avoids downloading a second toolchain."
         required: false
@@ -155,6 +165,44 @@ jobs:
         path: staging/*
         retention-days: 30
 
+  audit:
+    if: inputs.audit
+    runs-on: ubuntu-latest
+    # cargo-audit reads Cargo.lock directly, so the caller's toolchain pin has
+    # no bearing on the result. Forcing the runner's preinstalled stable keeps
+    # this job from downloading a pinned toolchain just to install one binary,
+    # and keeps an old pin from failing to build a current cargo-audit.
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+    # Same shape as cargo-deb in rust-build-deb.yml: build it once, then reuse
+    # the binary. Bump the key's version suffix to force a rebuild; the
+    # advisory database itself is fetched fresh on every run, so a cached
+    # binary does not mean stale advisories.
+    - name: Cache cargo-audit
+      id: cache-cargo-audit
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: ~/.cargo/bin/cargo-audit
+        key: cargo-audit-${{ runner.os }}-${{ runner.arch }}-v1
+    - name: Install cargo-audit
+      if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
+      run: cargo install cargo-audit --locked
+    - name: Audit dependencies
+      id: cargo-audit
+      env:
+        AUDIT_ARGS: ${{ inputs.audit-args }}
+      run: |
+        read -ra audit_args <<< "$AUDIT_ARGS"
+        # A binary crate commits its lockfile; a library usually does not, and
+        # cargo audit has nothing to read without one.
+        if [ ! -f Cargo.lock ]; then
+          echo "No Cargo.lock in the repository; generating one to audit."
+          cargo generate-lockfile
+        fi
+        cargo audit "${audit_args[@]}"
+
   # NOTE: no job-level `permissions:` here on purpose. Declaring one inside a
   # reusable workflow forces EVERY caller to grant at least that permission or
   # their whole run dies with startup_failure — even on branch/PR runs where
@@ -167,8 +215,15 @@ jobs:
   #         permissions:
   #           contents: write
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: build
+    needs: [build, audit]
+    # `audit` is skipped when a caller sets audit: false, and a skipped job in
+    # needs() would take this one down with it, so the gate is spelled out:
+    # release a tag when the build passed and the audit did not fail.
+    if: >-
+      !cancelled()
+      && startsWith(github.ref, 'refs/tags/v')
+      && needs.build.result == 'success'
+      && needs.audit.result != 'failure'
     runs-on: ubuntu-latest
     steps:
     - name: Download all artifacts

@@ -13,13 +13,14 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
     - uses: rhysd/actionlint@914e7df21a07ef503a81201c76d2b11c789d3fca  # v1.7.12
 
-  # The Rust workflows' "Resolve Rust toolchain" step is copy-pasted into every
-  # job and the reusable-workflow self-tests cannot reach its rust-toolchain.toml
-  # branch (this repo's tree has no such file). This runs the step's own shell
-  # against fixtures instead. See tests/resolve-toolchain/test.py.
-  resolve-toolchain:
+  # Steps the Rust workflows inline into several jobs (a reusable workflow
+  # cannot source a script from this repo) are checked for drift here, and the
+  # toolchain resolver is run against fixtures -- the reusable-workflow
+  # self-tests cannot reach its rust-toolchain.toml branch, since this repo's
+  # own tree has no such file. See tests/inline-steps/test.py.
+  inline-steps:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
     - run: python3 -m pip install --quiet pyyaml
-    - run: python3 tests/resolve-toolchain/test.py
+    - run: python3 tests/inline-steps/test.py

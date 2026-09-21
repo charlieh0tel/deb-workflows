@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Test the inlined "Resolve Rust toolchain" step.
+"""Test the steps that are inlined into several jobs.
 
-The step is copy-pasted into every Rust job, because a reusable workflow runs in
-the caller's checkout and cannot source a script from this repo. The reusable-
-workflow self-tests can't reach its interesting branch either: they run against
-this repo's own tree, which has no rust-toolchain.toml.
+A reusable workflow runs in the caller's checkout, so it cannot source a script
+or a composite action from this repo without checking this repo out too. A few
+steps are therefore copy-pasted across jobs, and copies drift. This pulls each
+step's shell back out of the workflow files -- never a copy of it -- and checks
+that every copy is identical.
 
-So this pulls the shell out of the workflow files themselves -- never a copy of
-it -- checks that every copy is identical, and runs it against fixture toolchain
-files.
+It also runs the toolchain resolver against fixture rust-toolchain.toml files,
+which the reusable-workflow self-tests cannot do: they run against this repo's
+own tree, which has no such file.
 """
 
 import pathlib
@@ -19,10 +20,12 @@ import tempfile
 import yaml
 
 WORKFLOWS = ["rust-ci.yml", "rust-build-deb.yml", "rust-build-exes.yml"]
-STEP_ID = "rust-toolchain"
+
+# step id -> how many jobs are expected to carry a copy of it
+INLINED = {"rust-toolchain": 5, "cargo-audit": 3}
 
 # (name, rust-toolchain.toml contents or None, toolchain input, expected)
-CASES = [
+RESOLVE_CASES = [
     ("no file", None, "", "stable"),
     ("no file, explicit input", None, "nightly", "nightly"),
     ("pinned", '[toolchain]\nchannel = "1.98.1"\ncomponents = ["clippy"]\n', "", "1.98.1"),
@@ -38,19 +41,31 @@ CASES = [
 ]
 
 
-def scripts(root):
-    """Every copy of the resolve step's shell, keyed by where it came from."""
+def copies(root, step_id):
+    """Every copy of a step's shell, keyed by where it came from."""
     found = {}
     for name in WORKFLOWS:
         workflow = yaml.safe_load((root / ".github/workflows" / name).read_text())
         for job_name, job in workflow["jobs"].items():
             for step in job.get("steps", []):
-                if step.get("id") == STEP_ID:
+                if step.get("id") == step_id:
                     found[f"{name}:{job_name}"] = step["run"]
     return found
 
 
-def run(script, toml, toolchain):
+def check_identical(root, step_id, expected_count):
+    found = copies(root, step_id)
+    if len(found) != expected_count:
+        sys.exit(f"expected '{step_id}' in {expected_count} jobs, found {sorted(found)}")
+    canonical, script = sorted(found.items())[0]
+    for where, other in sorted(found.items()):
+        if other != script:
+            sys.exit(f"{where} has drifted from {canonical}; keep the copies identical")
+    print(f"ok   {expected_count} identical copies of '{step_id}'")
+    return script
+
+
+def resolve(script, toml, toolchain):
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
         if toml is not None:
@@ -70,18 +85,11 @@ def run(script, toml, toolchain):
 
 def main():
     root = pathlib.Path(__file__).resolve().parents[2]
-    found = scripts(root)
-    if len(found) != 5:
-        sys.exit(f"expected the resolve step in 5 jobs, found {sorted(found)}")
-
-    canonical, script = sorted(found.items())[0]
-    for where, other in sorted(found.items()):
-        if other != script:
-            sys.exit(f"{where} has drifted from {canonical}; keep the copies identical")
+    scripts = {step: check_identical(root, step, n) for step, n in INLINED.items()}
 
     failures = 0
-    for name, toml, toolchain, want in CASES:
-        got = run(script, toml, toolchain)
+    for name, toml, toolchain, want in RESOLVE_CASES:
+        got = resolve(scripts["rust-toolchain"], toml, toolchain)
         if got != want:
             failures += 1
             print(f"FAIL {name}: TOOLCHAIN={toolchain!r} -> {got!r}, want {want!r}")
@@ -89,7 +97,7 @@ def main():
             print(f"ok   {name}: {got}")
     if failures:
         sys.exit(f"{failures} case(s) failed")
-    print(f"\n{len(CASES)} cases passed against {len(found)} identical copies of the step")
+    print(f"\n{len(RESOLVE_CASES)} resolver cases passed")
 
 
 if __name__ == "__main__":

@@ -34,6 +34,14 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `artifact-suffix` | string | `""` | Suffix added before arch in artifact name (e.g. `collector` → `debian-package-collector-amd64`). Required when calling this workflow multiple times in one repo to avoid artifact name collisions. |
 | `submodules` | string | `"false"` | Checkout submodules: `true`, `false`, or `recursive` |
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
+| `audit` | boolean | `true` | Run `cargo audit` before releasing; a finding blocks the release |
+| `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
+
+The audit runs in parallel with the build, but the release job waits for it: on
+a tag whose dependencies carry an advisory the build still runs and still
+uploads its workflow artifacts, but no GitHub Release is published.
+`audit: false` skips the job and releases anyway. See `rust-ci.yml` below for
+how the audit itself works.
 
 #### `rust-build-exes.yml`
 
@@ -50,6 +58,14 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 Linux |
 | `features` | string | `""` | Comma-separated cargo features to enable for build and test |
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
+| `audit` | boolean | `true` | Run `cargo audit` before releasing; a finding blocks the release |
+| `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
+
+The audit runs in parallel with the build, but the release job waits for it: on
+a tag whose dependencies carry an advisory the build still runs and still
+uploads its workflow artifacts, but no GitHub Release is published.
+`audit: false` skips the job and releases anyway. See `rust-ci.yml` below for
+how the audit itself works.
 
 #### `rust-ci.yml`
 
