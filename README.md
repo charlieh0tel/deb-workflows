@@ -6,6 +6,15 @@ Reusable GitHub Actions workflows for building and testing projects.
 
 ### Rust
 
+All three Rust workflows take a `toolchain`. Leave it empty (the default) and the
+workflow reads `channel` out of the caller's `rust-toolchain.toml`, falling back to
+`stable` when there is no such file — so a repo that pins names its version once, in
+the file, and CI installs exactly that. Pass a value to override the file for the
+*install* only: cargo still obeys `rust-toolchain.toml` when it runs, so a mismatch
+just means two toolchains get downloaded. Components and targets are installed onto
+whichever toolchain is resolved. The legacy bare `rust-toolchain` file (no `.toml`)
+is not read; those repos should pass `toolchain` explicitly.
+
 #### `rust-build-deb.yml`
 
 Builds `.deb` packages using `cargo-deb`. Creates a GitHub Release with `.deb` artifacts when a `v*` tag is pushed.
@@ -24,7 +33,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `package` | string | `""` | Cargo package to build (`cargo deb -p`). Empty = default package. |
 | `artifact-suffix` | string | `""` | Suffix added before arch in artifact name (e.g. `collector` → `debian-package-collector-amd64`). Required when calling this workflow multiple times in one repo to avoid artifact name collisions. |
 | `submodules` | string | `"false"` | Checkout submodules: `true`, `false`, or `recursive` |
-| `toolchain` | string | `"stable"` | Rust toolchain to install. A `rust-toolchain.toml` in the calling repo wins when cargo runs, so a repo that pins should pass the same version here rather than install a second toolchain. |
+| `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
 
 #### `rust-build-exes.yml`
 
@@ -40,7 +49,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `targets` | string | amd64+arm64+win | JSON array of build targets |
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 Linux |
 | `features` | string | `""` | Comma-separated cargo features to enable for build and test |
-| `toolchain` | string | `"stable"` | Rust toolchain to install. A `rust-toolchain.toml` in the calling repo wins when cargo runs, so a repo that pins should pass the same version here rather than install a second toolchain. |
+| `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
 
 #### `rust-ci.yml`
 
@@ -48,8 +57,8 @@ Runs `cargo fmt` (nightly), `cargo clippy`, and `cargo test` as separate paralle
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
-| `toolchain` | string | `"stable"` | Rust toolchain for clippy/test |
-| `fmt-toolchain` | string | `"nightly"` | Toolchain for cargo fmt |
+| `toolchain` | string | `""` | Toolchain for clippy/test. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
+| `fmt-toolchain` | string | `"nightly"` | Toolchain for `cargo fmt`, invoked as `cargo +<toolchain> fmt` so a pinned `rust-toolchain.toml` does not take it over. Empty resolves like `toolchain`. |
 | `targets` | string | `""` | Extra targets to install (e.g. `thumbv6m-none-eabi`) |
 | `build-deps` | string | `""` | Space-separated apt packages to install |
 | `check-args` | string | `""` | Extra args for cargo check/clippy (e.g. `--target thumbv6m-none-eabi`) |
@@ -148,7 +157,7 @@ Every third-party `uses:` in this repo is pinned to a full commit SHA, with the 
 
 A tag can be moved; a SHA cannot, so a compromised upstream tag can't silently change what runs here. `.github/dependabot.yml` opens a weekly grouped PR that bumps the SHAs and their comments together. Keep the comment accurate when hand-editing a pin — it is the only human-readable record of the version.
 
-`dtolnay/rust-toolchain` is pinned the same way, so the toolchain can no longer come from the branch name (`@stable`): every call site passes `toolchain:` explicitly.
+`dtolnay/rust-toolchain` is pinned the same way, so the toolchain can no longer come from the branch name (`@stable`): every call site passes `toolchain:` explicitly. The action requires a channel and does not read `rust-toolchain.toml`, which is why each Rust job resolves one from the file first. That resolution is inlined in every job on purpose -- a reusable workflow runs in the *caller's* checkout, so it cannot call a script or composite action from this repo without checking this repo out as well (the dance `python-ci.yml` does above).
 
 This repo's own refs are not SHA-pinned and should not be: `test-released.yml` exists to exercise the published `@v1` tag, and the `./` paths in the other test workflows exist to exercise the working tree.
 

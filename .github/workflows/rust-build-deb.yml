@@ -34,10 +34,10 @@ on:
         type: string
         default: "false"
       toolchain:
-        description: "Rust toolchain to install, e.g. 'stable' or '1.98.1'.  A rust-toolchain.toml in the calling repo overrides this when cargo runs, so callers that pin should pass the same version here to avoid installing two toolchains."
+        description: "Rust toolchain to install, e.g. 'stable' or '1.98.1'. Empty (the default) takes the channel from the caller's rust-toolchain.toml, falling back to stable. Cargo obeys rust-toolchain.toml whatever is installed, so leaving this empty is how a repo that pins avoids downloading a second toolchain."
         required: false
         type: string
-        default: "stable"
+        default: ""
 
 env:
   CARGO_TERM_COLOR: always
@@ -57,10 +57,27 @@ jobs:
       with:
         submodules: ${{ inputs.submodules }}
 
+    # dtolnay/rust-toolchain needs an explicit channel -- it does not read
+    # rust-toolchain.toml -- so read one out of the file when the caller did
+    # not pass a toolchain. Inlined in each job rather than shared: a reusable
+    # workflow runs in the CALLER's checkout, so it cannot source a script or
+    # composite action from this repo without checking this repo out too.
+    - name: Resolve Rust toolchain
+      id: rust-toolchain
+      env:
+        TOOLCHAIN: ${{ inputs.toolchain }}
+      run: |
+        if [ -z "${TOOLCHAIN}" ] && [ -f rust-toolchain.toml ]; then
+          TOOLCHAIN=$(sed -n 's/^[[:space:]]*channel[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' rust-toolchain.toml | head -n 1)
+        fi
+        TOOLCHAIN="${TOOLCHAIN:-stable}"
+        echo "Rust toolchain: ${TOOLCHAIN}"
+        echo "toolchain=${TOOLCHAIN}" >> "${GITHUB_OUTPUT}"
+
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de  # v1
       with:
-        toolchain: ${{ inputs.toolchain }}
+        toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
         # Install the rustup target this matrix entry builds. A no-op when it
         # is the runner's own target, and what makes a cross target (or a
         # pinned toolchain, which starts out with no targets beyond its host)
