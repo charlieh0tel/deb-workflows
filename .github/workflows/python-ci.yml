@@ -48,6 +48,11 @@ on:
         required: false
         type: string
         default: "ruff format --check ."
+      audit-command:
+        description: "Command to audit dependencies for known vulnerabilities, e.g. 'pip-audit'. Off by default: with no arguments pip-audit reports on the whole environment, which on the pip path includes what the runner image ships. Must start with the tool name: a VAR=value prefix is not supported."
+        required: false
+        type: string
+        default: ""
 
 # A bare `./` path to this repo's composite actions would resolve against the
 # *caller's* workspace and break external callers, so each job checks this
@@ -70,12 +75,12 @@ permissions:
   contents: read
 
 jobs:
-  # Detected once and consumed by the three jobs below via `needs`, so the
+  # Detected once and consumed by the four jobs below via `needs`, so the
   # detection rules live in exactly one place. A composite action would also
   # work, but relative `uses: ./...` paths in a *reusable* workflow resolve
   # against the caller's workspace, so it would break for external callers.
   detect:
-    if: inputs.lint-command != '' || inputs.format-check-command != '' || inputs.test-command != ''
+    if: inputs.lint-command != '' || inputs.format-check-command != '' || inputs.test-command != '' || inputs.audit-command != ''
     runs-on: ubuntu-latest
     outputs:
       uv: ${{ steps.detect.outputs.uv }}
@@ -211,4 +216,50 @@ jobs:
       with:
         working-directory: ${{ inputs.working-directory || '.' }}
         command: ${{ inputs.test-command }}
+        uv: ${{ needs.detect.outputs.uv }}
+
+  # Audits the environment the other jobs run in, so the dependencies have to
+  # be installed first, exactly as in `test`. Under uv that is the project
+  # environment, which holds the locked versions and nothing else; on the pip
+  # path it also covers what the runner's interpreter came with.
+  audit:
+    if: inputs.audit-command != ''
+    needs: detect
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        submodules: recursive
+    - name: Fetch the actions from this workflow's own commit
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        repository: ${{ job.workflow_repository }}
+        ref: ${{ job.workflow_sha }}
+        path: .deb-workflows
+    - uses: ./.deb-workflows/.github/actions/setup-python-ci
+      with:
+        python-version: ${{ inputs.python-version }}
+        system-packages: ${{ inputs.system-packages }}
+        uv: ${{ needs.detect.outputs.uv }}
+    - name: Install dependencies
+      if: needs.detect.outputs.uv != 'true'
+      working-directory: ${{ inputs.working-directory || '.' }}
+      env:
+        REQS: ${{ inputs.requirements-file }}
+      run: |
+        pip install pip-audit
+        if [ -n "${REQS}" ] && [ -f "${REQS}" ]; then
+          pip install -r "${REQS}"
+        fi
+    - name: Sync dependencies (uv)
+      if: needs.detect.outputs.uv == 'true'
+      uses: ./.deb-workflows/.github/actions/uv-sync
+      with:
+        working-directory: ${{ inputs.working-directory || '.' }}
+        lock-check: ${{ inputs.lock-check }}
+    - name: Audit dependencies
+      uses: ./.deb-workflows/.github/actions/uv-run
+      with:
+        working-directory: ${{ inputs.working-directory || '.' }}
+        command: ${{ inputs.audit-command }}
         uv: ${{ needs.detect.outputs.uv }}

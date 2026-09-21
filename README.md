@@ -53,7 +53,8 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 
 #### `rust-ci.yml`
 
-Runs `cargo fmt` (nightly), `cargo clippy`, and `cargo test` as separate parallel jobs.
+Runs `cargo fmt` (nightly), `cargo clippy`, `cargo test`, and a `cargo audit`
+dependency audit as separate parallel jobs.
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
@@ -62,12 +63,20 @@ Runs `cargo fmt` (nightly), `cargo clippy`, and `cargo test` as separate paralle
 | `targets` | string | `""` | Extra targets to install (e.g. `thumbv6m-none-eabi`) |
 | `build-deps` | string | `""` | Space-separated apt packages to install |
 | `check-args` | string | `""` | Extra args for cargo check/clippy (e.g. `--target thumbv6m-none-eabi`) |
+| `audit` | boolean | `true` | Run `cargo audit` against the RustSec advisory database |
+| `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
+
+The `audit` job builds `cargo-audit` once and caches the binary; the advisory
+database itself is fetched on every run, so a cached binary never means stale
+advisories. A library with no committed `Cargo.lock` gets one generated for the
+audit. An advisory fails the job -- set `audit: false` to turn it off, or name
+the advisory in `audit-args` to accept one that has no fix yet.
 
 ### Python
 
 #### `python-ci.yml`
 
-Runs lint, format check, and tests for Python projects. Each job is independent and can be disabled by passing an empty string for its command.
+Runs lint, format check, tests, and an optional dependency audit for Python projects. Each job is independent and can be disabled by passing an empty string for its command.
 
 **uv support:** uv is detected once (a `uv.lock`, `uv.toml`, or a `[tool.uv*]` section in `pyproject.toml` in `working-directory`) and the result is shared by all three jobs. When detected, `uv sync` installs the project's dependencies and `requirements-file` is ignored. Otherwise the pip path is used, unchanged. Override detection with `use-uv`.
 
@@ -97,6 +106,16 @@ Each command must **start with the tool name** — `ruff check .`, not `MPLBACKE
 | `test-command` | string | `"pytest --showlocals -rA"` | Test command (empty to skip tests) |
 | `lint-command` | string | `"ruff check ."` | Lint command (empty to skip lint) |
 | `format-check-command` | string | `"ruff format --check ."` | Format check command (empty to skip) |
+| `audit-command` | string | `""` | Dependency audit command, e.g. `pip-audit`. Off unless set. |
+
+Unlike the Rust and Go audits, this one is opt-in. The job installs the
+project's dependencies the same way `test` does and then audits what is
+installed, and with no arguments `pip-audit` reports on the entire environment
+-- under uv that is just the locked project environment, but on the pip path it
+also covers whatever the runner's interpreter came with, which is a poor reason
+to fail somebody's build. Set `audit-command: pip-audit` to turn it on. Like the
+other commands it is just a command, so `pip-audit --ignore-vuln GHSA-xxxx-xxxx-xxxx`
+accepts a finding that has no fix yet.
 
 ### Debian (dpkg)
 
@@ -117,11 +136,17 @@ Builds `.deb` packages from projects with a `debian/` directory using `jtdor/bui
 
 #### `go-ci.yml`
 
-Runs `go build`, `go test`, and `go vet`.
+Runs `go build`, `go test`, and `go vet`, plus a `govulncheck` audit.
 
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `go-version` | string | `"stable"` | Go version |
+| `audit` | boolean | `true` | Run `govulncheck` against the Go vulnerability database |
+| `audit-args` | string | `"./..."` | Arguments for `govulncheck` |
+
+`govulncheck` reports only vulnerabilities in code paths the build actually
+reaches, so it is quiet by comparison with a manifest scanner. A finding fails
+the job; `audit: false` turns it off.
 
 ## Versioning
 

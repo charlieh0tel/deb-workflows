@@ -8,6 +8,16 @@ on:
         required: false
         type: string
         default: "stable"
+      audit:
+        description: "Audit dependencies with govulncheck (Go vulnerability database)"
+        required: false
+        type: boolean
+        default: true
+      audit-args:
+        description: "Arguments for govulncheck"
+        required: false
+        type: string
+        default: "./..."
 
 # Pure CI: never writes. A called workflow can only narrow the caller's
 # token, never widen it.
@@ -25,3 +35,23 @@ jobs:
     - run: go build ./...
     - run: go test ./...
     - run: go vet ./...
+
+  audit:
+    if: inputs.audit
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
+      with:
+        go-version: ${{ inputs.go-version }}
+    # Not SHA-pinnable the way an action is, but a module is fetched through
+    # the proxy and verified against the checksum database, so @latest cannot
+    # silently change what a published version contains.
+    - name: Install govulncheck
+      run: go install golang.org/x/vuln/cmd/govulncheck@latest
+    - name: Audit dependencies
+      env:
+        AUDIT_ARGS: ${{ inputs.audit-args }}
+      run: |
+        read -ra audit_args <<< "$AUDIT_ARGS"
+        govulncheck "${audit_args[@]}"

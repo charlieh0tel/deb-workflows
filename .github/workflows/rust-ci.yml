@@ -28,6 +28,16 @@ on:
         required: false
         type: string
         default: ""
+      audit:
+        description: "Audit dependencies against the RustSec advisory database"
+        required: false
+        type: boolean
+        default: true
+      audit-args:
+        description: "Extra arguments for cargo audit (e.g. '--ignore RUSTSEC-2024-0001' for an advisory with no fix yet)"
+        required: false
+        type: string
+        default: ""
 
 env:
   CARGO_TERM_COLOR: always
@@ -143,3 +153,41 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y pkg-config "${extra_deps[@]}"
     - run: cargo test --verbose
+
+  audit:
+    if: inputs.audit
+    runs-on: ubuntu-latest
+    # cargo-audit reads Cargo.lock directly, so the caller's toolchain pin has
+    # no bearing on the result. Forcing the runner's preinstalled stable keeps
+    # this job from downloading a pinned toolchain just to install one binary,
+    # and keeps an old pin from failing to build a current cargo-audit.
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+    # Same shape as cargo-deb in rust-build-deb.yml: build it once, then reuse
+    # the binary. Bump the key's version suffix to force a rebuild; the
+    # advisory database itself is fetched fresh on every run, so a cached
+    # binary does not mean stale advisories.
+    - name: Cache cargo-audit
+      id: cache-cargo-audit
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+      with:
+        path: ~/.cargo/bin/cargo-audit
+        key: cargo-audit-${{ runner.os }}-${{ runner.arch }}-v1
+    - name: Install cargo-audit
+      if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
+      run: cargo install cargo-audit --locked
+    - name: Audit dependencies
+      id: cargo-audit
+      env:
+        AUDIT_ARGS: ${{ inputs.audit-args }}
+      run: |
+        read -ra audit_args <<< "$AUDIT_ARGS"
+        # A binary crate commits its lockfile; a library usually does not, and
+        # cargo audit has nothing to read without one.
+        if [ ! -f Cargo.lock ]; then
+          echo "No Cargo.lock in the repository; generating one to audit."
+          cargo generate-lockfile
+        fi
+        cargo audit "${audit_args[@]}"
