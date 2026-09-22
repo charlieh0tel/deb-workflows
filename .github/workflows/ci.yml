@@ -24,3 +24,19 @@ jobs:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
     - run: python3 -m pip install --quiet pyyaml
     - run: python3 tests/inline-steps/test.py
+
+  # This repository's own Python gets checked out inside every python-ci
+  # caller's workspace, where their `ruff check .` will walk it and fail their
+  # build on our code. setup-python-ci hides the checkout behind a nested
+  # .gitignore, but a caller can turn respect-gitignore off, so our files have
+  # to pass ruff as well -- against the current ruff, with preview rules,
+  # because that is the strictest thing a caller might be running. A new ruff
+  # release can therefore redden this job; better here than in four repos that
+  # did not change anything.
+  self-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+    - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+    - run: uvx ruff check --preview .
+    - run: uvx ruff format --check .

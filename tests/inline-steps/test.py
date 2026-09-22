@@ -28,13 +28,31 @@ INLINED = {"rust-toolchain": 5, "cargo-audit": 3}
 RESOLVE_CASES = [
     ("no file", None, "", "stable"),
     ("no file, explicit input", None, "nightly", "nightly"),
-    ("pinned", '[toolchain]\nchannel = "1.98.1"\ncomponents = ["clippy"]\n', "", "1.98.1"),
-    ("input overrides the file", '[toolchain]\nchannel = "1.98.1"\n', "1.90.0", "1.90.0"),
+    (
+        "pinned",
+        '[toolchain]\nchannel = "1.98.1"\ncomponents = ["clippy"]\n',
+        "",
+        "1.98.1",
+    ),
+    (
+        "input overrides the file",
+        '[toolchain]\nchannel = "1.98.1"\n',
+        "1.90.0",
+        "1.90.0",
+    ),
     ("no spaces", '[toolchain]\nchannel="nightly"\n', "", "nightly"),
-    ("dated nightly, indented, trailing comment",
-     '[toolchain]\n  channel = "nightly-2025-01-01"  # for -Z flags\n', "", "nightly-2025-01-01"),
-    ("commented-out channel is ignored",
-     '# channel = "beta"\n[toolchain]\nchannel = "stable"\n', "", "stable"),
+    (
+        "dated nightly, indented, trailing comment",
+        '[toolchain]\n  channel = "nightly-2025-01-01"  # for -Z flags\n',
+        "",
+        "nightly-2025-01-01",
+    ),
+    (
+        "commented-out channel is ignored",
+        '# channel = "beta"\n[toolchain]\nchannel = "stable"\n',
+        "",
+        "stable",
+    ),
     # A toolchain pinned by path has no channel to install; stable is as good a
     # guess as any, and rustup still honours the file when cargo runs.
     ("path pin falls back", '[toolchain]\npath = "/opt/rust"\n', "", "stable"),
@@ -56,8 +74,10 @@ def copies(root, step_id):
 def check_identical(root, step_id, expected_count):
     found = copies(root, step_id)
     if len(found) != expected_count:
-        sys.exit(f"expected '{step_id}' in {expected_count} jobs, found {sorted(found)}")
-    canonical, script = sorted(found.items())[0]
+        sys.exit(
+            f"expected '{step_id}' in {expected_count} jobs, found {sorted(found)}"
+        )
+    canonical, script = min(found.items())
     for where, other in sorted(found.items()):
         if other != script:
             sys.exit(f"{where} has drifted from {canonical}; keep the copies identical")
@@ -75,7 +95,11 @@ def resolve(script, toml, toolchain):
         subprocess.run(
             ["bash", "-eo", "pipefail", "-c", script],
             cwd=tmp,
-            env={"PATH": "/usr/bin:/bin", "TOOLCHAIN": toolchain, "GITHUB_OUTPUT": str(out)},
+            env={
+                "PATH": "/usr/bin:/bin",
+                "TOOLCHAIN": toolchain,
+                "GITHUB_OUTPUT": str(out),
+            },
             check=True,
             stdout=subprocess.DEVNULL,
         )

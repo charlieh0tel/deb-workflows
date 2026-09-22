@@ -22,6 +22,25 @@ inputs:
 runs:
   using: composite
   steps:
+  # Everything under .deb-workflows is this repository, checked out inside the
+  # caller's workspace so their jobs can load these actions. A caller's own
+  # `ruff check .` walks the whole workspace and would lint it -- failing their
+  # build on our code, under whatever rule set they happen to enable. Ruff (and
+  # anything else built on the same ignore machinery) honours a nested
+  # .gitignore, and this directory is its own checkout, so ignoring everything
+  # in it keeps our files out of their results.
+  - shell: bash
+    env:
+      ACTION_PATH: ${{ github.action_path }}
+    run: |
+      root=$(cd "${ACTION_PATH}/../../.." && pwd)
+      if [ ! -f "${root}/.github/workflows/python-ci.yml" ]; then
+        echo "::error::expected the deb-workflows checkout at ${root}"
+        exit 1
+      fi
+      printf '*\n' > "${root}/.gitignore"
+      echo "Hid ${root} from tools that walk the workspace"
+
   # Before the toolchain, since a Python package may need its headers or shared
   # library present at install or import time.
   - name: Install system packages
