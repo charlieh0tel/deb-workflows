@@ -164,6 +164,13 @@ Runs `go build`, `go test`, and `go vet`, plus a `govulncheck` audit.
 reaches, so it is quiet by comparison with a manifest scanner. A finding fails
 the job; `audit: false` turns it off.
 
+## Practices
+
+[docs/best-practices.md](docs/best-practices.md) collects the rules these
+workflows assume: pinning, permissions, toolchains, advisories, releases and
+trusted publishing, each with the failure that earned it. Read it before
+changing a workflow or cutting a release.
+
 ## Versioning
 
 Pin callers to the `v1` major tag:
