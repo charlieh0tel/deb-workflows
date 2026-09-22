@@ -92,6 +92,13 @@ Prefer `GITHUB_TOKEN` to a PAT. A PAT that can write to another repository is
 readable by everyone with push access to this one, which is usually a wider
 set of people than can write to the target.
 
+Trigger another repository with `workflow_dispatch`, not
+`repository_dispatch`. A fine-grained token needs Contents: write for
+`repository_dispatch`, which lets the holder push commits -- including to the
+workflow that runs with the signing key. `workflow_dispatch` needs Actions:
+write, which starts runs and changes no code. Scope the token to the one
+repository it triggers.
+
 Never put a publishing credential in a page. Every page published under one
 `github.io` account shares an origin, and therefore shares `localStorage`.
 
@@ -110,6 +117,12 @@ input empty; it reads the channel from that file.
 
 Do not name the version at the call site as well. Two places, no check that
 they agree, and a mismatch costs a second toolchain download.
+
+A job that installs the toolchain itself must name a channel: a SHA-pinned
+`dtolnay/rust-toolchain` cannot read `rust-toolchain.toml`, and without a
+`toolchain:` input it fails. Name it there, keep it equal to the file, or
+convert the job to a `rust-ci.yml` call, which reads the file for you. The
+rule above is about call sites, not about steps that have no choice.
 
 Use `cargo +<toolchain> fmt` when the formatting toolchain differs from the
 build toolchain. A `rust-toolchain.toml` outranks whatever the job installed,
