@@ -89,6 +89,7 @@ package alone.
 | `build-deps` | string | `""` | Space-separated apt packages to install |
 | `check-args` | string | `""` | Extra args for cargo check/clippy (e.g. `--target thumbv6m-none-eabi`) |
 | `test-args` | string | `""` | Extra args for `cargo test` (e.g. `--features testing`) |
+| `submodules` | string | `"false"` | Checkout submodules: `true`, `false`, or `recursive` |
 | `cache-directories` | string | `""` | Extra paths for the cargo cache to keep, one per line |
 | `audit` | boolean | `true` | Run `cargo audit` against the RustSec advisory database |
 | `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |

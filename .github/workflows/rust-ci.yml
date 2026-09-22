@@ -28,6 +28,11 @@ on:
         required: false
         type: string
         default: ""
+      submodules:
+        description: "Whether to checkout submodules: 'true', 'false', or 'recursive'. A workspace whose members or vendored sources live in submodules needs this."
+        required: false
+        type: string
+        default: "false"
       test-args:
         description: "Extra arguments for cargo test (e.g. '--features testing')"
         required: false
@@ -62,6 +67,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        submodules: ${{ inputs.submodules }}
     # dtolnay/rust-toolchain needs an explicit channel -- it does not read
     # rust-toolchain.toml -- so read one out of the file when the caller did
     # not pass a toolchain. Inlined in each job rather than shared: a reusable
@@ -94,6 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        submodules: ${{ inputs.submodules }}
     # dtolnay/rust-toolchain needs an explicit channel -- it does not read
     # rust-toolchain.toml -- so read one out of the file when the caller did
     # not pass a toolchain. Inlined in each job rather than shared: a reusable
@@ -139,6 +148,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      with:
+        submodules: ${{ inputs.submodules }}
     # dtolnay/rust-toolchain needs an explicit channel -- it does not read
     # rust-toolchain.toml -- so read one out of the file when the caller did
     # not pass a toolchain. Inlined in each job rather than shared: a reusable
