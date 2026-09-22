@@ -28,6 +28,16 @@ on:
         required: false
         type: string
         default: ""
+      test-args:
+        description: "Extra arguments for cargo test (e.g. '--features testing')"
+        required: false
+        type: string
+        default: ""
+      cache-directories:
+        description: "Extra paths for the cargo cache to keep, one per line. A build script that fetches sources into target/ needs its path here, or the cache prunes it and the fetch repeats every run."
+        required: false
+        type: string
+        default: ""
       audit:
         description: "Audit dependencies against the RustSec advisory database"
         required: false
@@ -106,6 +116,11 @@ jobs:
         toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
         targets: ${{ inputs.targets }}
         components: clippy
+    # Without this every run compiles the whole dependency tree again. Keyed on
+    # the job, so clippy and test do not evict one another.
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
+      with:
+        cache-directories: ${{ inputs.cache-directories }}
     - name: Install build dependencies
       if: inputs.build-deps != ''
       env:
@@ -144,6 +159,9 @@ jobs:
     - uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de  # v1
       with:
         toolchain: ${{ steps.rust-toolchain.outputs.toolchain }}
+    - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
+      with:
+        cache-directories: ${{ inputs.cache-directories }}
     - name: Install build dependencies
       if: inputs.build-deps != ''
       env:
@@ -152,7 +170,11 @@ jobs:
         read -ra extra_deps <<< "$BUILD_DEPS"
         sudo apt-get update
         sudo apt-get install -y pkg-config "${extra_deps[@]}"
-    - run: cargo test --verbose
+    - env:
+        TEST_ARGS: ${{ inputs.test-args }}
+      run: |
+        read -ra test_args <<< "$TEST_ARGS"
+        cargo test "${test_args[@]}" --verbose
 
   audit:
     if: inputs.audit

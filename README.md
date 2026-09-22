@@ -72,6 +72,15 @@ how the audit itself works.
 Runs `cargo fmt` (nightly), `cargo clippy`, `cargo test`, and a `cargo audit`
 dependency audit as separate parallel jobs.
 
+The clippy and test jobs cache the cargo registry and `target/` between runs.
+`cache-directories` extends what the cache keeps: a build script that fetches
+sources into `target/` needs its path listed, or the cache prunes it and the
+fetch repeats every run.
+
+`check-args` and `test-args` reach clippy and `cargo test` respectively. Pass
+`--workspace` in `check-args` for a workspace, or clippy lints the default
+package alone.
+
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `toolchain` | string | `""` | Toolchain for clippy/test. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
@@ -79,6 +88,8 @@ dependency audit as separate parallel jobs.
 | `targets` | string | `""` | Extra targets to install (e.g. `thumbv6m-none-eabi`) |
 | `build-deps` | string | `""` | Space-separated apt packages to install |
 | `check-args` | string | `""` | Extra args for cargo check/clippy (e.g. `--target thumbv6m-none-eabi`) |
+| `test-args` | string | `""` | Extra args for `cargo test` (e.g. `--features testing`) |
+| `cache-directories` | string | `""` | Extra paths for the cargo cache to keep, one per line |
 | `audit` | boolean | `true` | Run `cargo audit` against the RustSec advisory database |
 | `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
 
