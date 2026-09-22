@@ -1,6 +1,14 @@
 # deb-workflows
 
-Reusable GitHub Actions workflows for building and testing projects.
+Reusable GitHub Actions workflows for building, testing and releasing
+projects.
+
+The name is historical. This started as one workflow that built `.deb`
+packages, and the repository kept the name while the scope grew. It now
+covers CI for Rust, Python and Go, dependency auditing, binary and package
+releases, and the practices in [docs/best-practices.md](docs/best-practices.md).
+Building `.deb` packages is two of the workflows here, not the point of the
+repository.
 
 ## Available Workflows
 
