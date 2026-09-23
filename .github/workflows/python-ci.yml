@@ -3,6 +3,11 @@ name: Python CI
 on:
   workflow_call:
     inputs:
+      runner:
+        description: "Runner image for these jobs. Override to test an image before GitHub makes it the default: ubuntu-latest migrates to Ubuntu 26 between 19 October and 19 November 2026."
+        required: false
+        type: string
+        default: "ubuntu-latest"
       python-version:
         description: "Python version"
         required: false
@@ -81,7 +86,7 @@ jobs:
   # against the caller's workspace, so it would break for external callers.
   detect:
     if: inputs.lint-command != '' || inputs.format-check-command != '' || inputs.test-command != '' || inputs.audit-command != ''
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     outputs:
       uv: ${{ steps.detect.outputs.uv }}
     steps:
@@ -111,7 +116,7 @@ jobs:
   lint:
     if: inputs.lint-command != ''
     needs: detect
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -145,7 +150,7 @@ jobs:
   format:
     if: inputs.format-check-command != ''
     needs: detect
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -179,7 +184,7 @@ jobs:
   test:
     if: inputs.test-command != ''
     needs: detect
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -225,7 +230,7 @@ jobs:
   audit:
     if: inputs.audit-command != ''
     needs: detect
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:

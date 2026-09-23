@@ -3,6 +3,11 @@ name: Rust CI
 on:
   workflow_call:
     inputs:
+      runner:
+        description: "Runner image for these jobs. Override to test an image before GitHub makes it the default: ubuntu-latest migrates to Ubuntu 26 between 19 October and 19 November 2026."
+        required: false
+        type: string
+        default: "ubuntu-latest"
       toolchain:
         description: "Rust toolchain to install, e.g. 'stable' or '1.98.1'. Empty (the default) takes the channel from the caller's rust-toolchain.toml, falling back to stable. Cargo obeys rust-toolchain.toml whatever is installed, so leaving this empty is how a repo that pins avoids downloading a second toolchain."
         required: false
@@ -64,7 +69,7 @@ permissions:
 
 jobs:
   fmt:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -98,7 +103,7 @@ jobs:
       run: cargo "+${TOOLCHAIN}" fmt --all -- --check
 
   clippy:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -145,7 +150,7 @@ jobs:
         cargo clippy "${check_args[@]}" -- -D warnings
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
       with:
@@ -189,7 +194,7 @@ jobs:
 
   audit:
     if: inputs.audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     # cargo-audit reads Cargo.lock directly, so the caller's toolchain pin has
     # no bearing on the result. Forcing the runner's preinstalled stable keeps
     # this job from downloading a pinned toolchain just to install one binary,

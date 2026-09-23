@@ -3,6 +3,11 @@ name: Go CI
 on:
   workflow_call:
     inputs:
+      runner:
+        description: "Runner image for these jobs. Override to test an image before GitHub makes it the default: ubuntu-latest migrates to Ubuntu 26 between 19 October and 19 November 2026."
+        required: false
+        type: string
+        default: "ubuntu-latest"
       go-version:
         description: "Go version (e.g. stable, 1.22)"
         required: false
@@ -26,7 +31,7 @@ permissions:
 
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
     - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0
@@ -38,7 +43,7 @@ jobs:
 
   audit:
     if: inputs.audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
     - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e  # v7.0.0

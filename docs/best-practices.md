@@ -257,6 +257,12 @@ floor to whatever GitHub last migrated the label to -- Ubuntu 26 from 19
 October 2026. CI jobs can track latest; artifact builds should name an image
 and move it deliberately.
 
+Run a canary when a runner label is about to move. `ubuntu-latest` becomes
+Ubuntu 26 between 19 October and 19 November 2026, and every job that uses it
+migrates on a date nobody chose. A weekly job on the new image, installing the
+same apt packages, turns that into one red build here rather than a dozen
+elsewhere on the day.
+
 Never key a condition on a runner image name. `matrix.os == 'ubuntu-latest'`
 gated the test step in rust-build-exes, so pinning that image would have
 switched the tests off without a word. `runner.os` says what was meant.
