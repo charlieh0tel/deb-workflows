@@ -99,6 +99,7 @@ package alone.
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `toolchain` | string | `""` | Toolchain for clippy/test. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
+| `runner` | string | `"ubuntu-latest"` | Runner image for these jobs; override to test an image before it becomes the default |
 | `fmt-toolchain` | string | `"nightly"` | Toolchain for `cargo fmt`, invoked as `cargo +<toolchain> fmt` so a pinned `rust-toolchain.toml` does not take it over. Empty resolves like `toolchain`; pass a dated nightly (`nightly-2026-09-15`) if a `rustfmt.toml` needs unstable options. |
 | `targets` | string | `""` | Extra targets to install (e.g. `thumbv6m-none-eabi`) |
 | `build-deps` | string | `""` | Space-separated apt packages to install |
@@ -141,6 +142,7 @@ Each command must **start with the tool name** — `ruff check .`, not `MPLBACKE
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `python-version` | string | `"3.12"` | Python version |
+| `runner` | string | `"ubuntu-latest"` | Runner image for these jobs; override to test an image before it becomes the default |
 | `working-directory` | string | `"."` | Directory all commands run in (also where uv detection looks) |
 | `use-uv` | string | `"auto"` | `auto` (detect), `true` (force uv), or `false` (force pip) |
 | `lock-check` | string | `"auto"` | Assert the lockfile is up to date: `auto` (strict when `uv.lock` exists), `true`, `false`. uv only. |
@@ -183,6 +185,7 @@ Runs `go build`, `go test`, and `go vet`, plus a `govulncheck` audit.
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `go-version` | string | `"stable"` | Go version |
+| `runner` | string | `"ubuntu-latest"` | Runner image for these jobs; override to test an image before it becomes the default |
 | `audit` | boolean | `true` | Run `govulncheck` against the Go vulnerability database |
 | `audit-args` | string | `"./..."` | Arguments for `govulncheck` |
 
