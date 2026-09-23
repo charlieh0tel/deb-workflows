@@ -251,6 +251,16 @@ one thing.
 Make red mean act now. A failure older than the last push describes code that
 is gone. A tag-only workflow that failed months ago is not today's problem.
 
+Pin the runner image for anything people download. A released binary runs only
+on systems whose glibc is at least the builder's, so `ubuntu-latest` sets that
+floor to whatever GitHub last migrated the label to -- Ubuntu 26 from 19
+October 2026. CI jobs can track latest; artifact builds should name an image
+and move it deliberately.
+
+Never key a condition on a runner image name. `matrix.os == 'ubuntu-latest'`
+gated the test step in rust-build-exes, so pinning that image would have
+switched the tests off without a word. `runner.os` says what was meant.
+
 Run `apt-get update` before `apt-get install`. Without it the runner installs
 against the image's baked index, and a superseded package 404s.
 
