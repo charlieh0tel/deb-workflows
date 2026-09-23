@@ -92,7 +92,7 @@ package alone.
 | Input | Type | Default | Description |
 |-------|------|---------|-------------|
 | `toolchain` | string | `""` | Toolchain for clippy/test. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
-| `fmt-toolchain` | string | `"nightly"` | Toolchain for `cargo fmt`, invoked as `cargo +<toolchain> fmt` so a pinned `rust-toolchain.toml` does not take it over. Empty resolves like `toolchain`. |
+| `fmt-toolchain` | string | `"nightly"` | Toolchain for `cargo fmt`, invoked as `cargo +<toolchain> fmt` so a pinned `rust-toolchain.toml` does not take it over. Empty resolves like `toolchain`; pass a dated nightly (`nightly-2026-09-15`) if a `rustfmt.toml` needs unstable options. |
 | `targets` | string | `""` | Extra targets to install (e.g. `thumbv6m-none-eabi`) |
 | `build-deps` | string | `""` | Space-separated apt packages to install |
 | `check-args` | string | `""` | Extra args for cargo check/clippy (e.g. `--target thumbv6m-none-eabi`) |
