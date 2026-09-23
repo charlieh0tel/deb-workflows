@@ -12,7 +12,7 @@ on:
         description: "JSON array of targets to build"
         required: false
         type: string
-        default: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-latest","arch":"amd64"},{"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04-arm","arch":"arm64"},{"target":"x86_64-pc-windows-msvc","os":"windows-latest","arch":"amd64"}]'
+        default: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"},{"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04-arm","arch":"arm64"},{"target":"x86_64-pc-windows-msvc","os":"windows-latest","arch":"amd64"}]'
       run-tests:
         description: "Run tests on amd64 Linux"
         required: false
@@ -121,8 +121,11 @@ jobs:
         if [[ -n "$FEATURES" ]]; then args+=(--features "$FEATURES"); fi
         cargo build --release --target "${TARGET}" "${args[@]}" --verbose
 
+    # Keyed on the platform, not on an image name: this said
+    # `matrix.os == 'ubuntu-latest'`, so pinning the image below would have
+    # switched the tests off silently.
     - name: Run tests
-      if: matrix.os == 'ubuntu-latest' && matrix.arch == 'amd64' && inputs.run-tests
+      if: runner.os == 'Linux' && matrix.arch == 'amd64' && inputs.run-tests
       shell: bash
       env:
         FEATURES: ${{ inputs.features }}
