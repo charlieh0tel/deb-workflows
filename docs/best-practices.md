@@ -145,7 +145,9 @@ version. Use `--precise` when it does.
 ## 5. Dependencies and advisories
 
 Run `cargo audit` (Rust), `govulncheck` (Go), or `pip-audit` (Python) in CI.
-Fail the job on a finding. A warning nobody must act on is ignored.
+Fail the job on a finding. A warning nobody must act on is ignored. All three
+are on by default in the shared workflows; a project that must skip one says
+so at the call site, where the decision is visible.
 
 Gate releases on the audit, not just pull requests. A tag whose dependencies
 carry an advisory should build and publish nothing.
