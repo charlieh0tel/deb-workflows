@@ -124,6 +124,15 @@ A job that installs the toolchain itself must name a channel: a SHA-pinned
 convert the job to a `rust-ci.yml` call, which reads the file for you. The
 rule above is about call sites, not about steps that have no choice.
 
+Pin the nightly by date when the formatting check needs one. A
+`rustfmt.toml` using an unstable option (`imports_granularity`,
+`group_imports`) requires nightly rustfmt; stable warns and ignores it, so the
+check passes on the very thing the option governs. Tracking bare `nightly`
+then makes formatting fail on mornings nobody touched the code, because
+rustfmt's output moves between nightlies. `fmt-toolchain: "nightly-2026-09-15"`
+turns that into a bump somebody decides to make. Check a candidate before
+pinning it: not every nightly ships rustfmt.
+
 Use `cargo +<toolchain> fmt` when the formatting toolchain differs from the
 build toolchain. A `rust-toolchain.toml` outranks whatever the job installed,
 so a bare `cargo fmt` silently runs the pinned one.
