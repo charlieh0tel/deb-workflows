@@ -154,6 +154,12 @@ Enable Dependabot alerts and security updates on every repository. They are
 off by default, which is how four repositories here accumulated advisories
 published months earlier.
 
+Check that your ecosystem is one Dependabot supports. uv is not on GitHub's
+supported list, so the four uv projects here get alerts -- the dependency
+graph does parse their lockfiles -- but not the automatic fix PR, because
+opening one needs ecosystem support. For those, `pip-audit` in CI is the
+coverage, not Dependabot.
+
 Know what each tool cannot see:
 
 - `cargo audit` reads RustSec only. Advisories filed as GHSA alone are
