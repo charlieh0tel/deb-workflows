@@ -1,0 +1,47 @@
+name: Ubuntu 26 canary
+
+# GitHub migrates the ubuntu-latest label to Ubuntu 26 between 19 October and
+# 19 November 2026. Every CI job in every repository that calls these
+# workflows moves with it, on a date nobody chose, and what breaks will be
+# apt package names, the image's preinstalled interpreters, and compilers that
+# have grown stricter.
+#
+# So run the same workflows on the new image now, once a week, and find out
+# here rather than across a dozen repositories on the day. This blocks
+# nothing: it is a separate workflow, and it is meant to be the first thing
+# that goes red.
+#
+# When the migration is done this file is deletable, or repointed at whatever
+# ubuntu-latest becomes next.
+on:
+  schedule:
+    # Monday morning, off the hour, so a week's drift shows up before the week
+    # gets going.
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    uses: ./.github/workflows/rust-ci.yml
+    with:
+      runner: ubuntu-26.04
+      # The apt packages the fleet actually installs, so a renamed or dropped
+      # package is caught here first.
+      build-deps: "libdbus-1-dev libasound2-dev libudev-dev libftdi1-dev libboost-dev cmake"
+      check-args: "--workspace --all-targets"
+      fmt-toolchain: ""
+
+  python:
+    uses: ./.github/workflows/python-ci.yml
+    with:
+      runner: ubuntu-26.04
+      working-directory: tests/python-uv
+      test-command: "pytest -q"
+
+  go:
+    uses: ./.github/workflows/go-ci.yml
+    with:
+      runner: ubuntu-26.04

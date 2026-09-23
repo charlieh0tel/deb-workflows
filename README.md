@@ -197,6 +197,23 @@ workflows assume: pinning, permissions, toolchains, advisories, releases and
 trusted publishing, each with the failure that earned it. Read it before
 changing a workflow or cutting a release.
 
+## The Ubuntu 26 canary
+
+`ubuntu-latest` becomes Ubuntu 26 between 19 October and 19 November 2026,
+which moves every CI job in every calling repository on a date nobody here
+chose. `canary-ubuntu.yml` runs these workflows against `ubuntu-26.04` weekly,
+with the apt packages the fleet actually installs, so a renamed package or a
+stricter compiler shows up in one place first rather than across a dozen
+repositories at once.
+
+It blocks nothing and is meant to be the first thing that goes red. The
+`runner` input is what makes it possible, and any caller can use it the same
+way.
+
+Artifact builds do not take part: `rust-build-deb` and `rust-build-exes` pin
+their Linux images deliberately, because a binary's glibc floor is its
+builder's.
+
 ## Versioning
 
 Pin callers to the `v1` major tag:
