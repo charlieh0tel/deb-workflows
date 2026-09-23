@@ -142,16 +142,15 @@ Each command must **start with the tool name** — `ruff check .`, not `MPLBACKE
 | `test-command` | string | `"pytest --showlocals -rA"` | Test command (empty to skip tests) |
 | `lint-command` | string | `"ruff check ."` | Lint command (empty to skip lint) |
 | `format-check-command` | string | `"ruff format --check ."` | Format check command (empty to skip) |
-| `audit-command` | string | `""` | Dependency audit command, e.g. `pip-audit`. Off unless set. |
+| `audit-command` | string | `"pip-audit"` | Dependency audit command (empty to skip) |
 
-Unlike the Rust and Go audits, this one is opt-in. The job installs the
-project's dependencies the same way `test` does and then audits what is
-installed, and with no arguments `pip-audit` reports on the entire environment
--- under uv that is just the locked project environment, but on the pip path it
-also covers whatever the runner's interpreter came with, which is a poor reason
-to fail somebody's build. Set `audit-command: pip-audit` to turn it on. Like the
-other commands it is just a command, so `pip-audit --ignore-vuln GHSA-xxxx-xxxx-xxxx`
-accepts a finding that has no fix yet.
+The audit job installs the project's dependencies the same way `test` does and
+then audits what is installed. Under uv that is the locked project environment
+and nothing else. On the pip path it also covers whatever the runner's
+interpreter came with, so a project there may want
+`pip-audit --ignore-vuln GHSA-xxxx-xxxx-xxxx` for a finding that is not its own,
+or `audit-command: ""` to skip the job. Like the other commands it is just a
+command.
 
 ### Debian (dpkg)
 

@@ -49,10 +49,10 @@ on:
         type: string
         default: "ruff format --check ."
       audit-command:
-        description: "Command to audit dependencies for known vulnerabilities, e.g. 'pip-audit'. Off by default: with no arguments pip-audit reports on the whole environment, which on the pip path includes what the runner image ships. Must start with the tool name: a VAR=value prefix is not supported."
+        description: "Command to audit dependencies for known vulnerabilities (empty to skip). Under uv this sees the locked project environment alone. On the pip path it also sees what the runner image's interpreter ships, so a caller there may want 'pip-audit --ignore-vuln ...' or an empty string. Must start with the tool name: a VAR=value prefix is not supported."
         required: false
         type: string
-        default: ""
+        default: "pip-audit"
 
 # A bare `./` path to this repo's composite actions would resolve against the
 # *caller's* workspace and break external callers, so each job checks this
