@@ -55,7 +55,14 @@ how the audit itself works.
 
 Builds release binaries for Linux and Windows. Creates a GitHub Release with binary artifacts when a `v*` tag is pushed.
 
-**Default targets:** amd64 Linux, arm64 Linux, x86_64 Windows.
+**Default targets:** amd64 Linux (`ubuntu-22.04`), arm64 Linux
+(`ubuntu-22.04-arm`), x86_64 Windows.
+
+The Linux images are pinned rather than `ubuntu-latest` on purpose: these
+binaries are published for people to download, and the glibc they are linked
+against is the oldest system they will run on. `ubuntu-latest` migrates to
+Ubuntu 26 from 19 October 2026, which would quietly raise that floor and leave
+bookworm users with a `GLIBC_2.4x not found`.
 
 Each matrix entry's `target` is added with rustup before the build, so a pinned toolchain or a non-host target works without extra setup. A true cross build may still need its linker in `build-deps`.
 
