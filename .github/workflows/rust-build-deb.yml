@@ -12,6 +12,13 @@ on:
         description: "JSON array of targets to build"
         required: false
         type: string
+        # The Linux images are pinned, not `ubuntu-latest`. A binary links
+        # against the builder's glibc and will not run on anything older, so
+        # the image decides the oldest system these packages install on:
+        # ubuntu-22.04 carries glibc 2.35, which Debian bookworm (2.36) and
+        # everything newer accept. Moving these to a newer image silently
+        # drops older systems, and `ubuntu-latest` migrates to Ubuntu 26 from
+        # 19 October 2026.
         default: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"},{"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04-arm","arch":"arm64"}]'
       run-tests:
         description: "Run tests on amd64"

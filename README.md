@@ -29,7 +29,7 @@ Builds `.deb` packages using `cargo-deb`. Creates a GitHub Release with `.deb` a
 
 **Requirements:** `[package.metadata.deb]` section in `Cargo.toml`. See [cargo-deb docs](https://github.com/kornelski/cargo-deb#readme).
 
-**Default targets:** amd64 (`ubuntu-latest`) and arm64 (`ubuntu-22.04-arm`, for Debian bookworm glibc compat).
+**Default targets:** amd64 (`ubuntu-22.04`) and arm64 (`ubuntu-22.04-arm`), both pinned for Debian bookworm glibc compatibility.
 
 Each matrix entry's `target` is added with rustup before the build, so a pinned toolchain or a non-host target works without extra setup. A true cross build may still need its linker in `build-deps`.
 
@@ -457,8 +457,13 @@ Each entry in the `targets` JSON array must have:
 
 ## Notes
 
-- arm64 Linux builds use `ubuntu-22.04-arm` (native runner) for Debian bookworm glibc compatibility (glibc 2.35).
-- amd64 Linux builds use `ubuntu-latest`.
+- Linux builds are pinned to `ubuntu-22.04` and `ubuntu-22.04-arm` (native
+  runner), which carry glibc 2.35. A binary will not run on a system whose
+  glibc is older than its builder's, so this image is what makes the packages
+  and binaries installable on Debian bookworm (glibc 2.36) and anything newer.
+  Do not move them to `ubuntu-latest`: that label migrates to Ubuntu 26 from
+  19 October 2026, which would drop every older system without failing a
+  build.
 - Cargo registry, git index, and build artifacts are cached for Rust workflows.
 
 ## License
