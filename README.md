@@ -71,6 +71,9 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `build-deps` | string | `""` | Space-separated apt packages to install on Linux |
 | `targets` | string | amd64+arm64+win | JSON array of build targets |
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 Linux |
+| `test-windows` | boolean | `false` | Also run `cargo test` on Windows targets (with `run-tests`) |
+| `package` | string | `""` | Cargo package to build, test and release (`cargo -p`); only its binaries are released. Empty = the whole workspace. |
+| `artifact-suffix` | string | `""` | Suffix added before the target in artifact names (e.g. `cli` → `binaries-cli-x86_64-pc-windows-msvc`). Required when calling this workflow more than once in one repo. |
 | `features` | string | `""` | Comma-separated cargo features to enable for build and test |
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
 | `audit` | boolean | `true` | Run `cargo audit` before releasing; a finding blocks the release |

@@ -25,6 +25,21 @@ on:
         required: false
         type: boolean
         default: true
+      test-windows:
+        description: "Also run the tests on Windows targets (needs run-tests)"
+        required: false
+        type: boolean
+        default: false
+      package:
+        description: "Cargo package to build, test and release (cargo -p). Empty = the whole workspace."
+        required: false
+        type: string
+        default: ""
+      artifact-suffix:
+        description: "Suffix added before the target in artifact names. Required when calling this workflow more than once in one repo."
+        required: false
+        type: string
+        default: ""
       features:
         description: "Comma-separated list of cargo features to enable"
         required: false
@@ -123,55 +138,70 @@ jobs:
       env:
         TARGET: ${{ matrix.target }}
         FEATURES: ${{ inputs.features }}
+        PACKAGE: ${{ inputs.package }}
       run: |
         args=()
         if [[ -n "$FEATURES" ]]; then args+=(--features "$FEATURES"); fi
+        if [[ -n "$PACKAGE" ]]; then args+=(--package "$PACKAGE"); fi
         cargo build --release --target "${TARGET}" "${args[@]}" --verbose
 
     # Keyed on the platform, not on an image name: this said
     # `matrix.os == 'ubuntu-latest'`, so pinning the image below would have
     # switched the tests off silently.
     - name: Run tests
-      if: runner.os == 'Linux' && matrix.arch == 'amd64' && inputs.run-tests
+      if: >-
+        inputs.run-tests
+        && ((runner.os == 'Linux' && matrix.arch == 'amd64')
+            || (runner.os == 'Windows' && inputs.test-windows))
       shell: bash
       env:
         FEATURES: ${{ inputs.features }}
+        PACKAGE: ${{ inputs.package }}
       run: |
         args=()
         if [[ -n "$FEATURES" ]]; then args+=(--features "$FEATURES"); fi
+        if [[ -n "$PACKAGE" ]]; then args+=(--package "$PACKAGE"); fi
         cargo test "${args[@]}" --verbose
 
-    - name: Collect binaries (Linux)
-      if: runner.os == 'Linux'
+    # One bash step for both systems.  With a package, only its own
+    # binaries: target/ comes from a cache and can hold other packages'
+    # binaries from earlier runs.
+    - name: Collect binaries
+      shell: bash
+      env:
+        TARGET: ${{ matrix.target }}
+        PACKAGE: ${{ inputs.package }}
       run: |
+        release="target/${TARGET}/release"
+        exe=""
+        if [[ "$RUNNER_OS" == Windows ]]; then exe=".exe"; fi
+        files=()
+        if [[ -n "$PACKAGE" ]]; then
+          # jq on Windows ends lines with CR; drop it.
+          mapfile -t bins < <(cargo metadata --no-deps --format-version 1 \
+            | jq -r --arg p "$PACKAGE" '.packages[] | select(.name == $p)
+                | .targets[] | select(.kind | index("bin")) | .name' \
+            | tr -d '\r')
+          if [[ ${#bins[@]} -eq 0 ]]; then
+            echo "::error::package ${PACKAGE} has no binaries" >&2
+            exit 1
+          fi
+          for bin in "${bins[@]}"; do files+=("${release}/${bin}${exe}"); done
+        elif [[ -n "$exe" ]]; then
+          files=("${release}"/*.exe)
+        else
+          mapfile -t files < <(find "$release" -maxdepth 1 -type f -executable ! -name '*.d' ! -name '*.so')
+        fi
         mkdir -p staging
-        while IFS= read -r f; do
-          name=$(basename "$f")
-          cp "$f" "staging/${name}-${{ matrix.target }}"
-        done < <(find "target/${{ matrix.target }}/release" -maxdepth 1 -type f -executable ! -name '*.d' ! -name '*.so')
+        for f in "${files[@]}"; do
+          name=$(basename "$f" "$exe")
+          cp "$f" "staging/${name}-${TARGET}${exe}"
+        done
 
-    - name: Upload artifacts (Linux)
-      if: runner.os == 'Linux'
+    - name: Upload artifacts
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
       with:
-        name: binaries-${{ matrix.target }}
-        path: staging/*
-        retention-days: 30
-
-    - name: Collect binaries (Windows)
-      if: runner.os == 'Windows'
-      shell: pwsh
-      run: |
-        New-Item -ItemType Directory -Force -Path staging
-        Get-ChildItem "target/${{ matrix.target }}/release/*.exe" | ForEach-Object {
-          Copy-Item $_.FullName "staging/$($_.BaseName)-${{ matrix.target }}.exe"
-        }
-
-    - name: Upload artifacts (Windows)
-      if: runner.os == 'Windows'
-      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
-      with:
-        name: binaries-${{ matrix.target }}
+        name: binaries-${{ inputs.artifact-suffix != '' && format('{0}-', inputs.artifact-suffix) || '' }}${{ matrix.target }}
         path: staging/*
         retention-days: 30
 
