@@ -44,12 +44,19 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
 | `audit` | boolean | `true` | Run `cargo audit` before releasing; a finding blocks the release |
 | `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
+| `cargo-deb-version` | string | `"3.8.0"` | cargo-deb version to build with |
 
 The audit runs in parallel with the build, but the release job waits for it: on
 a tag whose dependencies carry an advisory the build still runs and still
 uploads its workflow artifacts, but no GitHub Release is published.
 `audit: false` skips the job and releases anyway. See `rust-ci.yml` below for
 how the audit itself works.
+
+cargo-deb is pinned because a new release can change the package itself, not
+just how it is built: 3.8 began applying `usr/lib/sysusers.d` files in
+`postinst`, which broke a package that also applied its own. The cache key
+carries the version, so changing it rebuilds cargo-deb. Bump the default
+deliberately and inspect a package built with it.
 
 #### `rust-build-exes.yml`
 
