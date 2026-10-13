@@ -50,6 +50,11 @@ on:
         required: false
         type: string
         default: ""
+      cargo-deb-version:
+        description: "cargo-deb version to build with. Pinned because a new cargo-deb can change what goes into the package, including maintainer scripts; bump it deliberately and check the result."
+        required: false
+        type: string
+        default: "3.8.0"
       toolchain:
         description: "Rust toolchain to install, e.g. 'stable' or '1.98.1'. Empty (the default) takes the channel from the caller's rust-toolchain.toml, falling back to stable. Cargo obeys rust-toolchain.toml whatever is installed, so leaving this empty is how a repo that pins avoids downloading a second toolchain."
         required: false
@@ -132,11 +137,13 @@ jobs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: ~/.cargo/bin/cargo-deb
-        key: cargo-deb-${{ runner.os }}-${{ runner.arch }}-v1
+        key: cargo-deb-${{ runner.os }}-${{ runner.arch }}-${{ inputs.cargo-deb-version }}
 
     - name: Install cargo-deb
       if: steps.cache-cargo-deb.outputs.cache-hit != 'true'
-      run: cargo install cargo-deb
+      env:
+        CARGO_DEB_VERSION: ${{ inputs.cargo-deb-version }}
+      run: cargo install cargo-deb --version "$CARGO_DEB_VERSION" --locked
 
     - name: Build release binary
       env:
