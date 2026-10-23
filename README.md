@@ -39,6 +39,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `targets` | string | amd64+arm64 | JSON array of build targets |
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 |
 | `package` | string | `""` | Cargo package to build (`cargo deb -p`). Empty = default package. |
+| `packages` | string | `""` | Space-separated Cargo packages to build into `.deb`s from one workspace build and release together. Use instead of `package`. A package may ship other crates' binaries. |
 | `artifact-suffix` | string | `""` | Suffix added before arch in artifact name (e.g. `collector` → `debian-package-collector-amd64`). Required when calling this workflow multiple times in one repo to avoid artifact name collisions. |
 | `submodules` | string | `"false"` | Checkout submodules: `true`, `false`, or `recursive` |
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
@@ -319,6 +320,22 @@ jobs:
 permissions:
   contents: write
 
+jobs:
+  build-deb:
+    uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1
+    with:
+      packages: my-collector my-agent
+    secrets: inherit
+```
+
+`packages` builds the workspace once per architecture and releases every
+package in one release, or none if any fails. A package whose assets are
+other crates' binaries needs it, since `package` builds only that crate.
+Calling the workflow once per package with `package` and `artifact-suffix`
+also works, but builds and tests the workspace once per call, and one
+call can fail while the other publishes:
+
+```yaml
 jobs:
   build-deb-collector:
     uses: charlieh0tel/deb-workflows/.github/workflows/rust-build-deb.yml@v1

@@ -30,6 +30,11 @@ on:
         required: false
         type: string
         default: ""
+      packages:
+        description: "Space-separated Cargo packages to build into .debs from one workspace build, released together. Use instead of `package`; a package may ship other crates' binaries."
+        required: false
+        type: string
+        default: ""
       artifact-suffix:
         description: "Suffix to disambiguate artifacts when one repo builds several packages."
         required: false
@@ -122,7 +127,7 @@ jobs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
       with:
         path: target
-        key: ${{ runner.os }}-${{ matrix.target }}-${{ inputs.package }}-cargo-build-target-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+        key: ${{ runner.os }}-${{ matrix.target }}-${{ inputs.packages != '' && 'workspace' || inputs.package }}-cargo-build-target-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
 
     - name: Install build dependencies
       env:
@@ -149,8 +154,17 @@ jobs:
       env:
         TARGET: ${{ matrix.target }}
         PACKAGE: ${{ inputs.package }}
+        PACKAGES: ${{ inputs.packages }}
       run: |
-        if [ -n "${PACKAGE}" ]; then
+        if [ -n "${PACKAGE}" ] && [ -n "${PACKAGES}" ]; then
+          echo "::error::Set package or packages, not both."
+          exit 1
+        fi
+        # A package's assets may be other crates' binaries, which -p would
+        # not build.
+        if [ -n "${PACKAGES}" ]; then
+          cargo build --release --workspace --target "${TARGET}" --verbose
+        elif [ -n "${PACKAGE}" ]; then
           cargo build --release -p "${PACKAGE}" --target "${TARGET}" --verbose
         else
           cargo build --release --target "${TARGET}" --verbose
@@ -169,27 +183,25 @@ jobs:
       env:
         TARGET: ${{ matrix.target }}
         PACKAGE: ${{ inputs.package }}
+        PACKAGES: ${{ inputs.packages }}
       run: |
-        if [ -n "${PACKAGE}" ]; then
+        if [ -n "${PACKAGES}" ]; then
+          read -ra packages <<< "$PACKAGES"
+          for package in "${packages[@]}"; do
+            cargo deb --no-build -p "${package}" --target "${TARGET}"
+          done
+        elif [ -n "${PACKAGE}" ]; then
           cargo deb --no-build -p "${PACKAGE}" --target "${TARGET}"
         else
           cargo deb --no-build --target "${TARGET}"
         fi
 
-    - name: Get package filename
-      id: package
-      env:
-        TARGET: ${{ matrix.target }}
-      run: |
-        PACKAGE=$(find "target/${TARGET}/debian" -maxdepth 1 -name '*.deb' | head -n 1)
-        echo "path=${PACKAGE}" >> "${GITHUB_OUTPUT}"
-        echo "name=$(basename "${PACKAGE}")" >> "${GITHUB_OUTPUT}"
-
-    - name: Upload Debian package as artifact
+    - name: Upload Debian packages as artifact
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
       with:
         name: debian-package-${{ inputs.artifact-suffix != '' && format('{0}-', inputs.artifact-suffix) || '' }}${{ matrix.arch }}
-        path: ${{ steps.package.outputs.path }}
+        path: target/${{ matrix.target }}/debian/*.deb
+        if-no-files-found: error
         retention-days: 30
 
   audit:

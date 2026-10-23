@@ -1,0 +1,15 @@
+[package]
+name = "fixture-bundle"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "fixture-bundle"
+path = "src/main.rs"
+
+[package.metadata.deb]
+maintainer = "Test <test@example.com>"
+assets = [
+    ["target/release/fixture-bundle", "usr/bin/", "755"],
+    ["target/release/fixture-b", "usr/bin/", "755"],
+]
