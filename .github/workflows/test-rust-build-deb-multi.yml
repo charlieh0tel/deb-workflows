@@ -25,3 +25,13 @@ jobs:
       artifact-suffix: fixture-b
       run-tests: false
       targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
+
+  # fixture-bundle ships fixture-b's binary, which `cargo build -p
+  # fixture-bundle` does not build.
+  build-deb-packages:
+    uses: ./.github/workflows/rust-build-deb.yml
+    with:
+      packages: fixture-bundle fixture-a
+      artifact-suffix: packages
+      run-tests: false
+      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
