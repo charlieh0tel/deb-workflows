@@ -26,12 +26,12 @@ on:
         type: boolean
         default: true
       package:
-        description: "Cargo package to build (cargo deb -p). Empty = default package."
+        description: "Deprecated: use `packages`, which takes one package as well. Cargo package to build (cargo deb -p). Empty = default package."
         required: false
         type: string
         default: ""
       packages:
-        description: "Space-separated Cargo packages to build into .debs from one workspace build, released together. Use instead of `package`; a package may ship other crates' binaries."
+        description: "Space-separated Cargo packages to build into .debs from one workspace build, released together. A package may ship other crates' binaries. Empty = default package."
         required: false
         type: string
         default: ""
@@ -159,6 +159,9 @@ jobs:
         if [ -n "${PACKAGE}" ] && [ -n "${PACKAGES}" ]; then
           echo "::error::Set package or packages, not both."
           exit 1
+        fi
+        if [ -n "${PACKAGE}" ]; then
+          echo "::warning::The package input is deprecated and goes away in v2; use packages: ${PACKAGE}"
         fi
         # A package's assets may be other crates' binaries, which -p would
         # not build.

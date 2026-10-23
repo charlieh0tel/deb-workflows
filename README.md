@@ -38,8 +38,8 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `build-deps` | string | `""` | Space-separated apt packages to install |
 | `targets` | string | amd64+arm64 | JSON array of build targets |
 | `run-tests` | boolean | `true` | Run `cargo test` on amd64 |
-| `package` | string | `""` | Cargo package to build (`cargo deb -p`). Empty = default package. |
-| `packages` | string | `""` | Space-separated Cargo packages to build into `.deb`s from one workspace build and release together. Use instead of `package`. A package may ship other crates' binaries. |
+| `packages` | string | `""` | Space-separated Cargo packages to build into `.deb`s from one workspace build and release together. A package may ship other crates' binaries. Empty = default package. |
+| `package` | string | `""` | **Deprecated**, removed in `v2`: use `packages`, which takes one package as well. Cargo package to build (`cargo deb -p`). |
 | `artifact-suffix` | string | `""` | Suffix added before arch in artifact name (e.g. `collector` → `debian-package-collector-amd64`). Needed only when another job in the same run also calls this workflow; for several packages, use `packages` in one call instead. |
 | `submodules` | string | `"false"` | Checkout submodules: `true`, `false`, or `recursive` |
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
@@ -329,9 +329,10 @@ jobs:
 ```
 
 `packages` builds the workspace once per architecture and releases every
-package in one release, or none if any fails. A package whose assets are
-other crates' binaries needs it, since `package` builds only that crate.
-Call the workflow once with `packages`, not once per package.
+package in one release, or none if any fails, and a package's assets may
+be other crates' binaries. Call the workflow once with `packages`, not once
+per package. It replaces the deprecated `package` input, which built only
+the named crate and goes away in `v2`.
 
 #### Rust binary releases (no deb):
 ```yaml

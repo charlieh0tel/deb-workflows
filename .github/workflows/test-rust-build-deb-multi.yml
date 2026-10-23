@@ -20,7 +20,7 @@ jobs:
       run-tests: false
       targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
 
-  # The single `package` input, still used by callers that ship one package.
+  # The deprecated `package` input, kept working until v2.
   build-deb-package:
     uses: ./.github/workflows/rust-build-deb.yml
     with:
