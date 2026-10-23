@@ -10,22 +10,6 @@ permissions:
   contents: write
 
 jobs:
-  build-deb-a:
-    uses: ./.github/workflows/rust-build-deb.yml
-    with:
-      package: fixture-a
-      artifact-suffix: fixture-a
-      run-tests: false
-      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
-
-  build-deb-b:
-    uses: ./.github/workflows/rust-build-deb.yml
-    with:
-      package: fixture-b
-      artifact-suffix: fixture-b
-      run-tests: false
-      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
-
   # fixture-bundle ships fixture-b's binary, which `cargo build -p
   # fixture-bundle` does not build.
   build-deb-packages:
@@ -33,5 +17,14 @@ jobs:
     with:
       packages: fixture-bundle fixture-a
       artifact-suffix: packages
+      run-tests: false
+      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
+
+  # The single `package` input, still used by callers that ship one package.
+  build-deb-package:
+    uses: ./.github/workflows/rust-build-deb.yml
+    with:
+      package: fixture-b
+      artifact-suffix: fixture-b
       run-tests: false
       targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'

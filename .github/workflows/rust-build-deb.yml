@@ -36,7 +36,7 @@ on:
         type: string
         default: ""
       artifact-suffix:
-        description: "Suffix to disambiguate artifacts when one repo builds several packages."
+        description: "Suffix to disambiguate artifacts when another job in the same run also calls this workflow. For several packages, use `packages` in one call instead."
         required: false
         type: string
         default: ""
