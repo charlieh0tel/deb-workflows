@@ -42,6 +42,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `package` | string | `""` | **Deprecated**, removed in `v2`: use `packages`, which takes one package as well. Cargo package to build (`cargo deb -p`). |
 | `artifact-suffix` | string | `""` | Suffix added before arch in artifact name (e.g. `collector` → `debian-package-collector-amd64`). Needed only when another job in the same run also calls this workflow; for several packages, use `packages` in one call instead. |
 | `submodules` | string | `"false"` | Checkout submodules: `true`, `false`, or `recursive` |
+| `cache-directories` | string | `""` | Extra paths for the cargo cache to keep, one per line |
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
 | `audit` | boolean | `true` | Run `cargo audit` before releasing; a finding blocks the release |
 | `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
@@ -83,6 +84,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `package` | string | `""` | Cargo package to build, test and release (`cargo -p`); only its binaries are released. Empty = the whole workspace. |
 | `artifact-suffix` | string | `""` | Suffix added before the target in artifact names (e.g. `cli` → `binaries-cli-x86_64-pc-windows-msvc`). Required when calling this workflow more than once in one repo. |
 | `features` | string | `""` | Comma-separated cargo features to enable for build and test |
+| `cache-directories` | string | `""` | Extra paths for the cargo cache to keep, one per line |
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
 | `audit` | boolean | `true` | Run `cargo audit` before releasing; a finding blocks the release |
 | `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
@@ -507,7 +509,14 @@ Each entry in the `targets` JSON array must have:
   Do not move them to `ubuntu-latest`: that label migrates to Ubuntu 26 from
   19 October 2026, which would drop every older system without failing a
   build.
-- Cargo registry, git index, and build artifacts are cached for Rust workflows.
+- The Rust workflows cache the cargo registry and `target/` with
+  `Swatinem/rust-cache`, which falls back to the nearest earlier cache when
+  `Cargo.lock` changes and prunes what the build did not use. The build
+  workflows key it per target and save nothing on a tag run: GitHub lets a run
+  restore only caches saved on its own ref or the default branch, so a tag's
+  cache could serve no later run. A caller that builds only on tags therefore
+  never hits the cache; build on pushes to `main` as well, so tag builds start
+  warm.
 
 ## License
 
