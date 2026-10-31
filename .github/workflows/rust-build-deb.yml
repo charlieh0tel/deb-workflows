@@ -60,6 +60,11 @@ on:
         required: false
         type: string
         default: "3.8.0"
+      cache-directories:
+        description: "Extra paths for the cargo cache to keep, one per line. A build script that fetches sources into target/ needs its path here, or the cache prunes it and the fetch repeats every run."
+        required: false
+        type: string
+        default: ""
       toolchain:
         description: "Rust toolchain to install, e.g. 'stable' or '1.98.1'. Empty (the default) takes the channel from the caller's rust-toolchain.toml, falling back to stable. Cargo obeys rust-toolchain.toml whatever is installed, so leaving this empty is how a repo that pins avoids downloading a second toolchain."
         required: false
@@ -111,23 +116,18 @@ jobs:
         # actually buildable.
         targets: ${{ matrix.target }}
 
-    - name: Cache cargo registry
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
+    # Restores the nearest earlier cache when Cargo.lock changes, and prunes
+    # what the build did not use. Keyed per target, since two targets can
+    # share a runner. ~/.cargo/bin is left out: tools installed there have
+    # their own version-keyed caches. A tag run saves nothing, because only
+    # runs of that same tag could ever restore it.
+    - name: Cache cargo
+      uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
       with:
-        path: ~/.cargo/registry
-        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo index
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-      with:
-        path: ~/.cargo/git
-        key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo build
-      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9  # v6.1.0
-      with:
-        path: target
-        key: ${{ runner.os }}-${{ matrix.target }}-${{ inputs.packages != '' && 'workspace' || inputs.package }}-cargo-build-target-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+        key: ${{ matrix.target }}
+        cache-bin: false
+        cache-directories: ${{ inputs.cache-directories }}
+        save-if: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
     - name: Install build dependencies
       env:
