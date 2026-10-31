@@ -9,7 +9,8 @@ that every copy is identical.
 
 It also runs the toolchain resolver against fixture rust-toolchain.toml files,
 which the reusable-workflow self-tests cannot do: they run against this repo's
-own tree, which has no such file.
+own tree, which has no such file. Likewise the pre-release tag check, which the
+self-tests never reach because they do not push tags.
 """
 
 import pathlib
@@ -19,10 +20,15 @@ import tempfile
 
 import yaml
 
-WORKFLOWS = ["rust-ci.yml", "rust-build-deb.yml", "rust-build-exes.yml"]
+WORKFLOWS = [
+    "rust-ci.yml",
+    "rust-build-deb.yml",
+    "rust-build-exes.yml",
+    "dpkg-build-deb.yml",
+]
 
 # step id -> how many jobs are expected to carry a copy of it
-INLINED = {"rust-toolchain": 5, "cargo-audit": 3}
+INLINED = {"rust-toolchain": 5, "cargo-audit": 3, "prerelease-tag": 3}
 
 # (name, rust-toolchain.toml contents or None, toolchain input, expected)
 RESOLVE_CASES = [
@@ -58,6 +64,18 @@ RESOLVE_CASES = [
     ("path pin falls back", '[toolchain]\npath = "/opt/rust"\n', "", "stable"),
 ]
 
+# (tag, expected prerelease output, or None when the check must fail)
+PRERELEASE_CASES = [
+    ("v1.2.0", "false"),
+    ("v1.2.0-beta.1", "true"),
+    ("v1.2.0-rc1", "true"),
+    ("v1.2.0-alpha.2.3", "true"),
+    # cargo-deb leaves these alone, so Debian sorts them after v1.2.0.
+    ("v1.2.0-beta", None),
+    ("v1.2.0-1", None),
+    ("v1.2.0-", None),
+]
+
 
 def copies(root, step_id):
     """Every copy of a step's shell, keyed by where it came from."""
@@ -85,26 +103,37 @@ def check_identical(root, step_id, expected_count):
     return script
 
 
-def resolve(script, toml, toolchain):
+def run_step(script, env, files=None):
+    """Run a step's shell in a scratch directory; its outputs, or None if it failed."""
     with tempfile.TemporaryDirectory() as tmp:
         tmp = pathlib.Path(tmp)
-        if toml is not None:
-            (tmp / "rust-toolchain.toml").write_text(toml)
+        for name, contents in (files or {}).items():
+            (tmp / name).write_text(contents)
         out = tmp / "github_output"
         out.touch()
-        subprocess.run(
+        result = subprocess.run(
             ["bash", "-eo", "pipefail", "-c", script],
             cwd=tmp,
-            env={
-                "PATH": "/usr/bin:/bin",
-                "TOOLCHAIN": toolchain,
-                "GITHUB_OUTPUT": str(out),
-            },
-            check=True,
+            env={"PATH": "/usr/bin:/bin", "GITHUB_OUTPUT": str(out), **env},
+            check=False,
             stdout=subprocess.DEVNULL,
         )
-        values = dict(line.split("=", 1) for line in out.read_text().splitlines())
-        return values["toolchain"]
+        if result.returncode != 0:
+            return None
+        return dict(line.split("=", 1) for line in out.read_text().splitlines())
+
+
+def resolve(script, toml, toolchain):
+    files = {} if toml is None else {"rust-toolchain.toml": toml}
+    values = run_step(script, {"TOOLCHAIN": toolchain}, files)
+    if values is None:
+        sys.exit(f"resolver failed: TOOLCHAIN={toolchain!r}")
+    return values["toolchain"]
+
+
+def check_prerelease(script, tag):
+    values = run_step(script, {"TAG": tag})
+    return None if values is None else values["prerelease"]
 
 
 def main():
@@ -119,9 +148,19 @@ def main():
             print(f"FAIL {name}: TOOLCHAIN={toolchain!r} -> {got!r}, want {want!r}")
         else:
             print(f"ok   {name}: {got}")
+    for tag, want in PRERELEASE_CASES:
+        got = check_prerelease(scripts["prerelease-tag"], tag)
+        if got != want:
+            failures += 1
+            print(f"FAIL {tag}: prerelease -> {got!r}, want {want!r}")
+        else:
+            print(f"ok   {tag}: {'refused' if got is None else got}")
     if failures:
         sys.exit(f"{failures} case(s) failed")
-    print(f"\n{len(RESOLVE_CASES)} resolver cases passed")
+    print(
+        f"\n{len(RESOLVE_CASES)} resolver and "
+        f"{len(PRERELEASE_CASES)} pre-release cases passed"
+    )
 
 
 if __name__ == "__main__":

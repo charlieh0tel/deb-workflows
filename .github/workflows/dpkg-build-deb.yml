@@ -61,12 +61,35 @@ jobs:
       with:
         path: artifacts
 
+    # A tag with a hyphen (v1.2.0-beta.1) is a semver pre-release and is
+    # published as a GitHub pre-release, which never counts as the latest
+    # release, so nothing that fetches the latest release picks it up. The
+    # suffix must mix digits and non-digits: only then does cargo-deb write
+    # 1.2.0~beta.1, which Debian sorts before 1.2.0. It leaves 1.2.0-beta
+    # alone, and Debian sorts that after 1.2.0. Inlined in each release job,
+    # since a reusable workflow cannot source a script from this repo.
+    - name: Check pre-release tag
+      id: prerelease-tag
+      env:
+        TAG: ${{ github.ref_name }}
+      run: |
+        prerelease=false
+        if [[ "${TAG}" == *-* ]]; then
+          suffix="${TAG#*-}"
+          if [[ ! "${suffix}" =~ [0-9] || ! "${suffix}" =~ [^0-9] ]]; then
+            echo "::error::Pre-release tag ${TAG} needs a numbered suffix such as -beta.1 or -rc1, not -${suffix}."
+            exit 1
+          fi
+          prerelease=true
+        fi
+        echo "prerelease=${prerelease}" >> "${GITHUB_OUTPUT}"
+
     - name: Create Release
       uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64  # v3.0.3
       with:
         files: artifacts/**/*.deb
         draft: false
-        prerelease: false
+        prerelease: ${{ steps.prerelease-tag.outputs.prerelease }}
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
