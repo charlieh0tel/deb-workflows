@@ -474,6 +474,20 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
+A tag with a hyphen, such as `v1.2.0-beta.1`, is a semver pre-release, and
+`rust-build-deb.yml`, `rust-build-exes.yml` and `dpkg-build-deb.yml` publish
+it as a GitHub pre-release. GitHub never counts a pre-release as the latest
+release, so anything that fetches the latest release, such as an apt
+repository built with `gh release download`, skips it: a pre-release is
+installed only by downloading it from its release page.
+
+The part after the hyphen must mix digits and non-digits (`-beta.1`, `-rc1`),
+or the release job fails. Only then does cargo-deb write `1.2.0~beta.1`, which
+Debian sorts before `1.2.0`. It leaves `1.2.0-beta` alone, and Debian sorts
+that after `1.2.0`, so an apt upgrade would never reach the real release.
+The `.deb` version comes from `Cargo.toml` (or `debian/changelog`), not the
+tag, so set it to match before tagging.
+
 ## Target matrix format (Rust build workflows)
 
 Each entry in the `targets` JSON array must have:
