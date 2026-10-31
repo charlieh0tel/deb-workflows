@@ -61,13 +61,8 @@ jobs:
       with:
         path: artifacts
 
-    # A tag with a hyphen (v1.2.0-beta.1) is a semver pre-release and is
-    # published as a GitHub pre-release, which never counts as the latest
-    # release, so nothing that fetches the latest release picks it up. The
-    # suffix must mix digits and non-digits: only then does cargo-deb write
-    # 1.2.0~beta.1, which Debian sorts before 1.2.0. It leaves 1.2.0-beta
-    # alone, and Debian sorts that after 1.2.0. Inlined in each release job,
-    # since a reusable workflow cannot source a script from this repo.
+    # Hyphenated tag -> pre-release. Suffix needs a digit and a non-digit, or
+    # cargo-deb won't sort it before the release. Inlined: see inline-steps.
     - name: Check pre-release tag
       id: prerelease-tag
       env:

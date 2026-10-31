@@ -476,19 +476,9 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-A tag with a hyphen, such as `v1.2.0-beta.1`, is a semver pre-release, and
-`rust-build-deb.yml`, `rust-build-exes.yml` and `dpkg-build-deb.yml` publish
-it as a GitHub pre-release. GitHub never counts a pre-release as the latest
-release, so anything that fetches the latest release, such as an apt
-repository built with `gh release download`, skips it: a pre-release is
-installed only by downloading it from its release page.
-
-The part after the hyphen must mix digits and non-digits (`-beta.1`, `-rc1`),
-or the release job fails. Only then does cargo-deb write `1.2.0~beta.1`, which
-Debian sorts before `1.2.0`. It leaves `1.2.0-beta` alone, and Debian sorts
-that after `1.2.0`, so an apt upgrade would never reach the real release.
-The `.deb` version comes from `Cargo.toml` (or `debian/changelog`), not the
-tag, so set it to match before tagging.
+A hyphenated tag (`v1.2.0-beta.1`) becomes a GitHub pre-release, never
+"latest", so apt-repo skips it. Number the suffix (`-beta.1`, not `-beta`) or
+the release fails: only then does cargo-deb sort it before `1.2.0`.
 
 ## Target matrix format (Rust build workflows)
 
@@ -509,14 +499,8 @@ Each entry in the `targets` JSON array must have:
   Do not move them to `ubuntu-latest`: that label migrates to Ubuntu 26 from
   19 October 2026, which would drop every older system without failing a
   build.
-- The Rust workflows cache the cargo registry and `target/` with
-  `Swatinem/rust-cache`, which falls back to the nearest earlier cache when
-  `Cargo.lock` changes and prunes what the build did not use. The build
-  workflows key it per target and save nothing on a tag run: GitHub lets a run
-  restore only caches saved on its own ref or the default branch, so a tag's
-  cache could serve no later run. A caller that builds only on tags therefore
-  never hits the cache; build on pushes to `main` as well, so tag builds start
-  warm.
+- Rust workflows cache with `Swatinem/rust-cache`. Tag runs don't save, so
+  build on pushes to `main` too or tag builds start cold.
 
 ## License
 

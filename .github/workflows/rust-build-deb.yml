@@ -116,11 +116,7 @@ jobs:
         # actually buildable.
         targets: ${{ matrix.target }}
 
-    # Restores the nearest earlier cache when Cargo.lock changes, and prunes
-    # what the build did not use. Keyed per target, since two targets can
-    # share a runner. ~/.cargo/bin is left out: tools installed there have
-    # their own version-keyed caches. A tag run saves nothing, because only
-    # runs of that same tag could ever restore it.
+    # No save on tags: only that same tag could restore it.
     - name: Cache cargo
       uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6  # v2.9.2
       with:
@@ -270,13 +266,8 @@ jobs:
         path: artifacts
         pattern: debian-package-*
 
-    # A tag with a hyphen (v1.2.0-beta.1) is a semver pre-release and is
-    # published as a GitHub pre-release, which never counts as the latest
-    # release, so nothing that fetches the latest release picks it up. The
-    # suffix must mix digits and non-digits: only then does cargo-deb write
-    # 1.2.0~beta.1, which Debian sorts before 1.2.0. It leaves 1.2.0-beta
-    # alone, and Debian sorts that after 1.2.0. Inlined in each release job,
-    # since a reusable workflow cannot source a script from this repo.
+    # Hyphenated tag -> pre-release. Suffix needs a digit and a non-digit, or
+    # cargo-deb won't sort it before the release. Inlined: see inline-steps.
     - name: Check pre-release tag
       id: prerelease-tag
       env:
