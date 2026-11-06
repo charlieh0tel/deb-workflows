@@ -21,7 +21,7 @@ on:
         # 19 October 2026.
         default: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"},{"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04-arm","arch":"arm64"}]'
       run-tests:
-        description: "Run tests on amd64"
+        description: "Run tests on each target's runner; a failure blocks the release"
         required: false
         type: boolean
         default: true
@@ -170,7 +170,7 @@ jobs:
         fi
 
     - name: Run tests
-      if: matrix.arch == 'amd64' && inputs.run-tests
+      if: inputs.run-tests
       run: cargo test --verbose
 
     - name: Clean debian output directory

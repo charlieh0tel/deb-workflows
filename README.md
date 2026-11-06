@@ -37,7 +37,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 |-------|------|---------|-------------|
 | `build-deps` | string | `""` | Space-separated apt packages to install |
 | `targets` | string | amd64+arm64 | JSON array of build targets |
-| `run-tests` | boolean | `true` | Run `cargo test` on amd64 |
+| `run-tests` | boolean | `true` | Run `cargo test` on each target's runner; a failure blocks the release |
 | `packages` | string | `""` | Space-separated Cargo packages to build into `.deb`s from one workspace build and release together. A package may ship other crates' binaries. Empty = default package. |
 | `package` | string | `""` | **Deprecated**, removed in `v2`: use `packages`, which takes one package as well. Cargo package to build (`cargo deb -p`). |
 | `artifact-suffix` | string | `""` | Suffix added before arch in artifact name (e.g. `collector` → `debian-package-collector-amd64`). Needed only when another job in the same run also calls this workflow; for several packages, use `packages` in one call instead. |
@@ -79,7 +79,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 |-------|------|---------|-------------|
 | `build-deps` | string | `""` | Space-separated apt packages to install on Linux |
 | `targets` | string | amd64+arm64+win | JSON array of build targets |
-| `run-tests` | boolean | `true` | Run `cargo test` on amd64 Linux |
+| `run-tests` | boolean | `true` | Run `cargo test` on each Linux target's runner; a failure blocks the release |
 | `test-windows` | boolean | `false` | Also run `cargo test` on Windows targets (with `run-tests`) |
 | `package` | string | `""` | Cargo package to build, test and release (`cargo -p`); only its binaries are released. Empty = the whole workspace. |
 | `artifact-suffix` | string | `""` | Suffix added before the target in artifact names (e.g. `cli` → `binaries-cli-x86_64-pc-windows-msvc`). Required when calling this workflow more than once in one repo. |

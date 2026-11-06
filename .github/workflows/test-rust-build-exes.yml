@@ -14,12 +14,20 @@ jobs:
     uses: ./.github/workflows/rust-build-exes.yml
     with:
       # amd64 Linux plus Windows: Windows is where the shell/quoting bug in
-      # b6277f2 lived, so it is worth the runner minutes. arm64 Linux is
-      # dropped to keep this cheap; the matrix plumbing is shared with
-      # rust-build-deb, which is covered by its own test.
+      # b6277f2 lived, so it is worth the runner minutes. arm64 Linux has its
+      # own smaller job below.
       targets: >-
         [{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-latest","arch":"amd64"},
          {"target":"x86_64-pc-windows-msvc","os":"windows-latest","arch":"amd64"}]
+
+  # The tests run on arm64, not only on amd64.
+  rust-build-exes-arm64-tests:
+    uses: ./.github/workflows/rust-build-exes.yml
+    with:
+      artifact-suffix: arm64-tests
+      audit: false
+      targets: >-
+        [{"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04-arm","arch":"arm64"}]
 
   # The package, artifact-suffix and test-windows inputs: one package of
   # the workspace, tested and built on Windows, under its own artifact

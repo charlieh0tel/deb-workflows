@@ -21,7 +21,7 @@ on:
         # 19 October 2026.
         default: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"},{"target":"aarch64-unknown-linux-gnu","os":"ubuntu-22.04-arm","arch":"arm64"},{"target":"x86_64-pc-windows-msvc","os":"windows-latest","arch":"amd64"}]'
       run-tests:
-        description: "Run tests on amd64 Linux"
+        description: "Run tests on each Linux target's runner; a failure blocks the release"
         required: false
         type: boolean
         default: true
@@ -147,7 +147,7 @@ jobs:
     - name: Run tests
       if: >-
         inputs.run-tests
-        && ((runner.os == 'Linux' && matrix.arch == 'amd64')
+        && (runner.os == 'Linux'
             || (runner.os == 'Windows' && inputs.test-windows))
       shell: bash
       env:
