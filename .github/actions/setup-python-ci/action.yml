@@ -48,10 +48,25 @@ runs:
     shell: bash
     env:
       PKGS: ${{ inputs.system-packages }}
+      # Whole-step apt retries, for outages that outlast apt's own per-fetch
+      # retries.  apt-get update exits 0 on a failed fetch, so the loop wraps
+      # the install too.
+      APT_ATTEMPTS: 3
+      APT_RETRY_DELAY_SECONDS: 30
     run: |
+      echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-acquire-retries
+      attempt=1
       # Word splitting of the package list is intentional.
       # shellcheck disable=SC2086
-      sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS
+      until sudo apt-get update && sudo apt-get install -y --no-install-recommends $PKGS; do
+        if [ "$attempt" -ge "$APT_ATTEMPTS" ]; then
+          echo "::error::apt-get failed after ${APT_ATTEMPTS} attempts"
+          exit 1
+        fi
+        echo "apt-get failed (attempt ${attempt}/${APT_ATTEMPTS}); retrying in ${APT_RETRY_DELAY_SECONDS} s"
+        sleep "$APT_RETRY_DELAY_SECONDS"
+        attempt=$((attempt + 1))
+      done
   - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0  # v7.1.0
     if: inputs.uv != 'true'
     with:

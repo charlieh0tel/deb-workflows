@@ -68,6 +68,11 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  # Whole-step apt retries, for outages that outlast apt's own per-fetch
+  # retries.  apt-get update exits 0 on a failed fetch, so the loop wraps the
+  # install too.
+  APT_ATTEMPTS: 3
+  APT_RETRY_DELAY_SECONDS: 30
 
 jobs:
   build:
@@ -123,8 +128,17 @@ jobs:
         BUILD_DEPS: ${{ inputs.build-deps }}
       run: |
         read -ra extra_deps <<< "$BUILD_DEPS"
-        sudo apt-get update
-        sudo apt-get install -y pkg-config "${extra_deps[@]}"
+        echo 'Acquire::Retries "3";' | sudo tee /etc/apt/apt.conf.d/80-acquire-retries
+        attempt=1
+        until sudo apt-get update && sudo apt-get install -y pkg-config "${extra_deps[@]}"; do
+          if [ "$attempt" -ge "$APT_ATTEMPTS" ]; then
+            echo "::error::apt-get failed after ${APT_ATTEMPTS} attempts"
+            exit 1
+          fi
+          echo "apt-get failed (attempt ${attempt}/${APT_ATTEMPTS}); retrying in ${APT_RETRY_DELAY_SECONDS} s"
+          sleep "$APT_RETRY_DELAY_SECONDS"
+          attempt=$((attempt + 1))
+        done
 
     # bash everywhere: the default shell on Windows is PowerShell,
     # where "${TARGET}" is an (empty) PowerShell variable, not the

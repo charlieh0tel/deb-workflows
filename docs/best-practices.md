@@ -270,6 +270,13 @@ switched the tests off without a word. `runner.os` says what was meant.
 Run `apt-get update` before `apt-get install`. Without it the runner installs
 against the image's baked index, and a superseded package 404s.
 
+Set `Acquire::Retries` in `/etc/apt/apt.conf.d` before the first `apt-get`, so
+a mirror or DNS blip is retried rather than failing the job.
+
+Retry the whole `apt-get update && apt-get install` step as well. apt's own
+retries last about a minute; a runner DNS outage lasts longer. `apt-get update`
+exits 0 when a fetch fails, so a loop around it alone never retries.
+
 Schedule off the hour, and know the limits: scheduled workflows queue behind
 everyone else's on the hour, and GitHub disables them after 60 days of
 repository inactivity.
