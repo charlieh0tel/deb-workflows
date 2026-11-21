@@ -1,0 +1,17 @@
+[package]
+name = "fixture-prebuild"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "fixture-prebuild"
+path = "src/main.rs"
+
+# generated/stamp.txt is not a cargo artifact: the caller's pre-build
+# command writes it.
+[package.metadata.deb]
+maintainer = "Test <test@example.com>"
+assets = [
+    ["target/release/fixture-prebuild", "usr/bin/", "755"],
+    ["generated/stamp.txt", "usr/share/fixture-prebuild/", "644"],
+]

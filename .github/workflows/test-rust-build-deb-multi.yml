@@ -29,6 +29,34 @@ jobs:
       run-tests: false
       targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
 
+  # pre-build generates an asset cargo-deb needs; TARGET reaches it.
+  build-deb-pre-build:
+    uses: ./.github/workflows/rust-build-deb.yml
+    with:
+      packages: fixture-prebuild
+      artifact-suffix: pre-build
+      run-tests: false
+      audit: false
+      pre-build: |
+        mkdir -p tests/rust-deb-prebuild/generated
+        echo "${TARGET}" > tests/rust-deb-prebuild/generated/stamp.txt
+      targets: '[{"target":"x86_64-unknown-linux-gnu","os":"ubuntu-22.04","arch":"amd64"}]'
+
+  check-pre-build-artifact:
+    needs: build-deb-pre-build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+      with:
+        name: debian-package-pre-build-amd64
+        path: artifact
+    - name: Stamp holds the target
+      run: |
+        dpkg-deb -x artifact/*.deb root
+        test "$(cat root/usr/share/fixture-prebuild/stamp.txt)" = "x86_64-unknown-linux-gnu"
+
   # The tests run on arm64, not only on amd64.
   build-deb-arm64-tests:
     uses: ./.github/workflows/rust-build-deb.yml
