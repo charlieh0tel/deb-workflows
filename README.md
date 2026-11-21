@@ -47,6 +47,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `audit` | boolean | `true` | Run `cargo audit` before releasing; a finding blocks the release |
 | `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
 | `cargo-deb-version` | string | `"3.8.0"` | cargo-deb version to build with |
+| `pre-build` | string | `""` | Shell command run from the repo root before the build (e.g. `make uf2`), to generate an asset that is not a cargo artifact. `TARGET` holds the matrix target. |
 
 The audit runs in parallel with the build, but the release job waits for it: on
 a tag whose dependencies carry an advisory the build still runs and still
@@ -88,6 +89,7 @@ Each matrix entry's `target` is added with rustup before the build, so a pinned 
 | `toolchain` | string | `""` | Rust toolchain to install. Empty reads `channel` from the caller's `rust-toolchain.toml`, else `stable`. |
 | `audit` | boolean | `true` | Run `cargo audit` before releasing; a finding blocks the release |
 | `audit-args` | string | `""` | Extra args for `cargo audit` (e.g. `--ignore RUSTSEC-2024-0001`) |
+| `pre-build` | string | `""` | Shell command run in bash (Windows too) from the repo root before the build, to generate a file the build needs. `TARGET` holds the matrix target. |
 
 The audit runs in parallel with the build, but the release job waits for it: on
 a tag whose dependencies carry an advisory the build still runs and still

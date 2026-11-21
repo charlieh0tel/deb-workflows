@@ -39,6 +39,8 @@ jobs:
       artifact-suffix: fixture-a
       test-windows: true
       audit: false
+      # pre-build runs in bash on Windows, with TARGET set.
+      pre-build: test "${TARGET}" = x86_64-pc-windows-msvc
       targets: >-
         [{"target":"x86_64-pc-windows-msvc","os":"windows-latest","arch":"amd64"}]
 

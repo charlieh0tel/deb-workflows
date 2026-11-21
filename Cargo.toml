@@ -1,3 +1,3 @@
 [workspace]
-members = ["tests/rust", "tests/rust-deb-a", "tests/rust-deb-b", "tests/rust-deb-bundle"]
+members = ["tests/rust", "tests/rust-deb-a", "tests/rust-deb-b", "tests/rust-deb-bundle", "tests/rust-deb-prebuild"]
 resolver = "2"

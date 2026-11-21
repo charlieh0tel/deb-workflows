@@ -70,6 +70,11 @@ on:
         required: false
         type: string
         default: ""
+      pre-build:
+        description: "Shell command run from the repository root after the toolchain, build-deps and cargo-deb are installed and before the build, e.g. to generate a package asset that is not a cargo artifact. TARGET holds the matrix entry's target."
+        required: false
+        type: string
+        default: ""
 
 env:
   CARGO_TERM_COLOR: always
@@ -159,6 +164,15 @@ jobs:
       env:
         CARGO_DEB_VERSION: ${{ inputs.cargo-deb-version }}
       run: cargo install cargo-deb --version "$CARGO_DEB_VERSION" --locked
+
+    # Through env, not ${{ }} in the script, so the command is never spliced
+    # into the step's generated shell.
+    - name: Pre-build
+      if: inputs.pre-build != ''
+      env:
+        TARGET: ${{ matrix.target }}
+        PRE_BUILD: ${{ inputs.pre-build }}
+      run: bash -euo pipefail -c "${PRE_BUILD}"
 
     - name: Build release binary
       env:
