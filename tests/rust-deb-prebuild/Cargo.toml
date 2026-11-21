@@ -7,8 +7,8 @@ edition = "2021"
 name = "fixture-prebuild"
 path = "src/main.rs"
 
-# generated/stamp.txt is not a cargo artifact: the caller's pre-build
-# command writes it.
+# generated/stamp.txt is not a cargo artifact: an earlier job uploads it
+# and prebuilt-artifact brings it in.
 [package.metadata.deb]
 maintainer = "Test <test@example.com>"
 assets = [

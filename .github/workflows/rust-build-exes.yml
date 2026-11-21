@@ -65,11 +65,16 @@ on:
         required: false
         type: string
         default: ""
-      pre-build:
-        description: "Shell command run in bash (Windows too) from the repository root after the toolchain and build-deps are installed and before the build, e.g. to generate a file the build needs. TARGET holds the matrix entry's target."
+      prebuilt-artifact:
+        description: "Name of an artifact an earlier job in the caller's run uploaded, downloaded to prebuilt-path before the build: a file the build needs that cargo does not make. The calling job needs `needs:` on that job. Empty = none."
         required: false
         type: string
         default: ""
+      prebuilt-path:
+        description: "Directory, relative to the repository root, to download prebuilt-artifact into"
+        required: false
+        type: string
+        default: "."
 
 env:
   CARGO_TERM_COLOR: always
@@ -145,15 +150,12 @@ jobs:
           attempt=$((attempt + 1))
         done
 
-    # Through env, not ${{ }} in the script, so the command is never spliced
-    # into the step's generated shell.
-    - name: Pre-build
-      if: inputs.pre-build != ''
-      shell: bash
-      env:
-        TARGET: ${{ matrix.target }}
-        PRE_BUILD: ${{ inputs.pre-build }}
-      run: bash -euo pipefail -c "${PRE_BUILD}"
+    - name: Download prebuilt artifact
+      if: inputs.prebuilt-artifact != ''
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8.0.2
+      with:
+        name: ${{ inputs.prebuilt-artifact }}
+        path: ${{ inputs.prebuilt-path }}
 
     # bash everywhere: the default shell on Windows is PowerShell,
     # where "${TARGET}" is an (empty) PowerShell variable, not the
