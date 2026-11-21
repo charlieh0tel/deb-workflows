@@ -32,15 +32,32 @@ jobs:
   # The package, artifact-suffix and test-windows inputs: one package of
   # the workspace, tested and built on Windows, under its own artifact
   # name so it does not collide with the call above.
+  # prebuilt-artifact downloads on Windows too; the download fails the job
+  # if the artifact is missing.
+  make-prebuilt:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+    - run: |
+        mkdir generated
+        echo "${GITHUB_RUN_ID}" > generated/stamp.txt
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7.0.2
+      with:
+        name: prebuilt-stamp
+        path: generated/stamp.txt
+        if-no-files-found: error
+        retention-days: 1
+
   rust-build-exes-package:
+    needs: make-prebuilt
     uses: ./.github/workflows/rust-build-exes.yml
     with:
       package: fixture-a
       artifact-suffix: fixture-a
       test-windows: true
       audit: false
-      # pre-build runs in bash on Windows, with TARGET set.
-      pre-build: test "${TARGET}" = x86_64-pc-windows-msvc
+      prebuilt-artifact: prebuilt-stamp
+      prebuilt-path: tests/rust-deb-prebuild/generated
       targets: >-
         [{"target":"x86_64-pc-windows-msvc","os":"windows-latest","arch":"amd64"}]
 
